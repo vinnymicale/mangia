@@ -1,0 +1,203 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { createTestDatabase } from '@/test/setupDb'
+import { mergeIngredients } from './shoppingList'
+import type { ParsedIngredient } from '@/lib/parsing/types'
+
+let cleanup: () => void
+
+function ing(
+  name: string,
+  quantity: number | null,
+  unit: string | null,
+): ParsedIngredient {
+  return {
+    quantity, unit, ingredient: name, note: null,
+    rawText: `${quantity ?? ''} ${unit ?? ''} ${name}`.trim(),
+    confidence: 'high',
+  }
+}
+
+beforeAll(() => {
+  const testDb = createTestDatabase()
+  process.env.DATABASE_URL = testDb.url
+  cleanup = testDb.cleanup
+})
+
+afterAll(() => cleanup())
+
+describe('mergeIngredients', () => {
+  const row = (
+    ingredientId: string,
+    name: string,
+    quantity: number | null,
+    unit: string | null,
+    recipeId: string,
+  ) => ({
+    ingredientId,
+    name,
+    category: null,
+    quantity,
+    unit,
+    recipeId,
+    rawText: `${quantity ?? ''} ${unit ?? ''} ${name}`.trim(),
+  })
+
+  it('sums identical units', () => {
+    const merged = mergeIngredients([
+      row('i1', 'flour', 2, 'cup', 'r1'),
+      row('i1', 'flour', 1, 'cup', 'r2'),
+    ])
+    expect(merged).toHaveLength(1)
+    expect(merged[0].quantity).toBe(3)
+    expect(merged[0].unit).toBe('cup')
+  })
+
+  it('converts within a compatibility group', () => {
+    const merged = mergeIngredients([
+      row('i1', 'milk', 1, 'cup', 'r1'),
+      row('i1', 'milk', 4, 'tablespoon', 'r2'),
+    ])
+    expect(merged).toHaveLength(1)
+    expect(merged[0].unit).toBe('cup')
+    expect(merged[0].quantity).toBeCloseTo(1.25, 5)
+  })
+
+  it('keeps incompatible units on separate lines', () => {
+    const merged = mergeIngredients([
+      row('i1', 'flour', 2, 'cup', 'r1'),
+      row('i1', 'flour', 500, 'gram', 'r2'),
+    ])
+    expect(merged).toHaveLength(2)
+  })
+
+  it('keeps unitless entries separate from measured ones', () => {
+    const merged = mergeIngredients([
+      row('i1', 'onion', 2, null, 'r1'),
+      row('i1', 'onion', 1, 'cup', 'r2'),
+    ])
+    expect(merged).toHaveLength(2)
+  })
+
+  it('sums unitless counts together', () => {
+    const merged = mergeIngredients([
+      row('i1', 'egg', 2, null, 'r1'),
+      row('i1', 'egg', 3, null, 'r2'),
+    ])
+    expect(merged).toHaveLength(1)
+    expect(merged[0].quantity).toBe(5)
+  })
+
+  it('leaves quantity null when every source is null', () => {
+    const merged = mergeIngredients([
+      row('i1', 'salt', null, null, 'r1'),
+      row('i1', 'salt', null, null, 'r2'),
+    ])
+    expect(merged[0].quantity).toBeNull()
+  })
+
+  it('does not treat a null quantity as zero', () => {
+    const merged = mergeIngredients([
+      row('i1', 'olive oil', 2, 'tablespoon', 'r1'),
+      row('i1', 'olive oil', null, 'tablespoon', 'r2'),
+    ])
+    expect(merged[0].quantity).toBe(2)
+    expect(merged[0].rawTexts).toHaveLength(2)
+  })
+
+  it('keeps different ingredients apart', () => {
+    const merged = mergeIngredients([
+      row('i1', 'flour', 1, 'cup', 'r1'),
+      row('i2', 'sugar', 1, 'cup', 'r1'),
+    ])
+    expect(merged).toHaveLength(2)
+  })
+
+  it('records every source recipe', () => {
+    const merged = mergeIngredients([
+      row('i1', 'flour', 1, 'cup', 'r1'),
+      row('i1', 'flour', 1, 'cup', 'r2'),
+    ])
+    expect(merged[0].sourceRecipeIds.sort()).toEqual(['r1', 'r2'])
+  })
+
+  it('deduplicates a repeated source recipe', () => {
+    const merged = mergeIngredients([
+      row('i1', 'flour', 1, 'cup', 'r1'),
+      row('i1', 'flour', 1, 'cup', 'r1'),
+    ])
+    expect(merged[0].sourceRecipeIds).toEqual(['r1'])
+  })
+})
+
+describe('generateShoppingList', () => {
+  it('builds a list from selected recipes', async () => {
+    const { createRecipe } = await import('./recipes')
+    const { generateShoppingList, getShoppingList } = await import('./shoppingList')
+    const a = await createRecipe({
+      title: 'A', instructions: '',
+      ingredients: [ing('flour', 2, 'cup'), ing('egg', 2, null)],
+    })
+    const b = await createRecipe({
+      title: 'B', instructions: '',
+      ingredients: [ing('flour', 1, 'cup'), ing('milk', 1, 'cup')],
+    })
+    const listId = await generateShoppingList([a, b], { name: 'Week 1' })
+    const list = await getShoppingList(listId)
+    expect(list?.name).toBe('Week 1')
+    const flour = list!.items.find((i) => i.ingredient?.name === 'flour')!
+    expect(flour.quantity).toBe(3)
+    expect(list!.items).toHaveLength(3)
+  })
+
+  it('excludes pantry staples', async () => {
+    const { createRecipe } = await import('./recipes')
+    const { resolveIngredient } = await import('./ingredients')
+    const { db } = await import('./client')
+    const { generateShoppingList, getShoppingList } = await import('./shoppingList')
+
+    const salt = await resolveIngredient('salt')
+    await db.pantryStaple.upsert({
+      where: { ingredientId: salt.id },
+      create: { name: salt.name, ingredientId: salt.id },
+      update: {},
+    })
+
+    const id = await createRecipe({
+      title: 'Salty', instructions: '',
+      ingredients: [ing('salt', 1, 'teaspoon'), ing('pepper', 1, 'teaspoon')],
+    })
+    const list = await getShoppingList(
+      await generateShoppingList([id], { excludeStaples: true }),
+    )
+    expect(list!.items.map((i) => i.ingredient?.name)).toEqual(['pepper'])
+  })
+
+  it('links each item back to its source recipes', async () => {
+    const { createRecipe } = await import('./recipes')
+    const { generateShoppingList, getShoppingList } = await import('./shoppingList')
+    const a = await createRecipe({
+      title: 'C', instructions: '', ingredients: [ing('butter', 1, 'cup')],
+    })
+    const b = await createRecipe({
+      title: 'D', instructions: '', ingredients: [ing('butter', 1, 'cup')],
+    })
+    const list = await getShoppingList(await generateShoppingList([a, b]))
+    expect(list!.items[0].sources).toHaveLength(2)
+  })
+})
+
+describe('toggleItemChecked', () => {
+  it('marks an item checked and back', async () => {
+    const { createRecipe } = await import('./recipes')
+    const { generateShoppingList, getShoppingList, toggleItemChecked } =
+      await import('./shoppingList')
+    const id = await createRecipe({
+      title: 'E', instructions: '', ingredients: [ing('rice', 1, 'cup')],
+    })
+    const listId = await generateShoppingList([id])
+    const before = await getShoppingList(listId)
+    await toggleItemChecked(before!.items[0].id, true)
+    const after = await getShoppingList(listId)
+    expect(after!.items[0].checked).toBe(true)
+  })
+})

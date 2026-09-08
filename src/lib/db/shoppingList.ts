@@ -1,0 +1,187 @@
+import { db } from './client'
+import { resolveIngredient } from './ingredients'
+import {
+  normalizeUnit,
+  areUnitsCompatible,
+  UNIT_BASE_FACTORS,
+} from '@/lib/parsing/units'
+
+export interface MergeRow {
+  ingredientId: string
+  name: string
+  category: string | null
+  quantity: number | null
+  unit: string | null
+  recipeId: string
+  rawText: string
+}
+
+export interface MergedItem {
+  ingredientId: string
+  name: string
+  category: string | null
+  quantity: number | null
+  unit: string | null
+  sourceRecipeIds: string[]
+  rawTexts: string[]
+}
+
+/**
+ * Groups rows by ingredient and by unit compatibility. Quantities are
+ * converted to the first-seen unit of their group; units from different
+ * groups (volume vs. weight) are never converted and stay separate.
+ */
+export function mergeIngredients(rows: MergeRow[]): MergedItem[] {
+  interface Bucket extends MergedItem {
+    baseUnit: string | null
+  }
+  const buckets: Bucket[] = []
+
+  for (const row of rows) {
+    const unit = row.unit === null ? null : normalizeUnit(row.unit)
+
+    const bucket = buckets.find(
+      (candidate) =>
+        candidate.ingredientId === row.ingredientId &&
+        (candidate.baseUnit === null || unit === null
+          ? candidate.baseUnit === unit
+          : areUnitsCompatible(candidate.baseUnit, unit)),
+    )
+
+    if (!bucket) {
+      buckets.push({
+        ingredientId: row.ingredientId,
+        name: row.name,
+        category: row.category,
+        quantity: row.quantity,
+        unit,
+        baseUnit: unit,
+        sourceRecipeIds: [row.recipeId],
+        rawTexts: [row.rawText],
+      })
+      continue
+    }
+
+    if (row.quantity !== null) {
+      const converted = convertQuantity(row.quantity, unit, bucket.baseUnit)
+      bucket.quantity = (bucket.quantity ?? 0) + converted
+    }
+    if (!bucket.sourceRecipeIds.includes(row.recipeId)) {
+      bucket.sourceRecipeIds.push(row.recipeId)
+    }
+    bucket.rawTexts.push(row.rawText)
+  }
+
+  return buckets.map(({ baseUnit: _baseUnit, ...item }) => item)
+}
+
+/** Converts within a compatibility group using each unit's base factor. */
+function convertQuantity(
+  quantity: number,
+  from: string | null,
+  to: string | null,
+): number {
+  if (from === null || to === null || from === to) return quantity
+  const fromFactor = UNIT_BASE_FACTORS[from]
+  const toFactor = UNIT_BASE_FACTORS[to]
+  if (fromFactor === undefined || toFactor === undefined) return quantity
+  return (quantity * fromFactor) / toFactor
+}
+
+export async function generateShoppingList(
+  recipeIds: string[],
+  opts: { name?: string; excludeStaples?: boolean } = {},
+): Promise<string> {
+  const recipes = await db.recipe.findMany({
+    where: { id: { in: recipeIds } },
+    include: { ingredients: { include: { ingredient: true } } },
+  })
+
+  const staples = opts.excludeStaples
+    ? new Set(
+        (await db.pantryStaple.findMany()).map((s) => s.ingredientId),
+      )
+    : new Set<string>()
+
+  const rows: MergeRow[] = []
+  for (const recipe of recipes) {
+    for (const row of recipe.ingredients) {
+      if (staples.has(row.ingredientId)) continue
+      rows.push({
+        ingredientId: row.ingredientId,
+        name: row.ingredient.name,
+        category: row.ingredient.category,
+        quantity: row.quantity,
+        unit: row.unit,
+        recipeId: recipe.id,
+        rawText: row.rawText,
+      })
+    }
+  }
+
+  const merged = mergeIngredients(rows)
+
+  const list = await db.shoppingList.create({
+    data: {
+      name: opts.name ?? `Shopping list ${new Date().toLocaleDateString()}`,
+      items: {
+        create: merged.map((item, index) => ({
+          ingredientId: item.ingredientId,
+          quantity: item.quantity,
+          unit: item.unit,
+          note: item.rawTexts.join('; '),
+          sortOrder: index,
+          sources: {
+            create: item.sourceRecipeIds.map((recipeId) => ({ recipeId })),
+          },
+        })),
+      },
+    },
+  })
+  return list.id
+}
+
+export async function getShoppingList(id: string) {
+  return db.shoppingList.findUnique({
+    where: { id },
+    include: {
+      items: {
+        include: { ingredient: true, sources: { include: { recipe: true } } },
+        orderBy: { sortOrder: 'asc' },
+      },
+    },
+  })
+}
+
+export async function listShoppingLists() {
+  return db.shoppingList.findMany({ orderBy: { createdAt: 'desc' } })
+}
+
+export async function toggleItemChecked(
+  itemId: string,
+  checked: boolean,
+): Promise<void> {
+  await db.shoppingListItem.update({ where: { id: itemId }, data: { checked } })
+}
+
+export async function addManualItem(
+  listId: string,
+  input: { name: string; quantity?: number | null; unit?: string | null },
+) {
+  const count = await db.shoppingListItem.count({ where: { listId } })
+  const ingredient = await resolveIngredient(input.name)
+  return db.shoppingListItem.create({
+    data: {
+      listId,
+      ingredientId: ingredient.id,
+      quantity: input.quantity ?? null,
+      unit: input.unit ?? null,
+      sortOrder: count,
+    },
+    include: { ingredient: true },
+  })
+}
+
+export async function deleteShoppingList(id: string): Promise<void> {
+  await db.shoppingList.delete({ where: { id } })
+}
