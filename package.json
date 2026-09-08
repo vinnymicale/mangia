@@ -12,6 +12,8 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "npm run db:e2e && playwright test",
+    "db:e2e": "DATABASE_URL=file:./e2e.db prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",

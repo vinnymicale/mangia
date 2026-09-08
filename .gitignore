@@ -11,3 +11,4 @@ out/
 test-results/
 playwright-report/
 src/generated/
+tsconfig.tsbuildinfo
