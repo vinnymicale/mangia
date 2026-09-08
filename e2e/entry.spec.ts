@@ -14,11 +14,14 @@ test('parses a pasted ingredient blob into editable rows', async ({ page }) => {
 test('saves a typed recipe end to end', async ({ page }) => {
   await page.goto('/recipes/new')
   await page.getByRole('button', { name: /type it out/i }).click()
-  await page.getByLabel('Title').fill('Test Pasta')
+  const title = `Test Pasta ${Date.now()}`
+  await page.getByLabel('Title').fill(title)
   await page.getByRole('button', { name: 'Add ingredient' }).click()
   await page.getByLabel('Quantity for line 1').fill('200')
   await page.getByLabel('Unit for line 1').fill('g')
-  await page.getByLabel('Ingredient for line 1').fill('spaghetti')
+  // A unique name guarantees the unknown-ingredient confirmation appears; a
+  // shared name like "spaghetti" may already be in the library from another spec.
+  await page.getByLabel('Ingredient for line 1').fill(`noodle ${Date.now()}`)
   await page.getByLabel('Instructions').fill('Boil it.')
 
   await page.getByRole('button', { name: 'Save recipe' }).click()
@@ -26,5 +29,5 @@ test('saves a typed recipe end to end', async ({ page }) => {
   await expect(page.getByText('New to your library')).toBeVisible()
   await page.getByRole('button', { name: 'Confirm and save' }).click()
 
-  await expect(page.getByRole('heading', { name: 'Test Pasta' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: title })).toBeVisible()
 })

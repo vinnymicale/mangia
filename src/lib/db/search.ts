@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { db } from './client'
+import { db, ensureDbReady } from './client'
 import { normalizeIngredientName } from './ingredients'
 
 /**
@@ -13,9 +13,11 @@ export async function ensureFtsSchema(): Promise<void> {
     'utf8',
   )
   // better-sqlite3 executes one statement per call, and CREATE TRIGGER
-  // bodies contain semicolons, so split on the END; boundary instead.
+  // bodies contain semicolons, so split only where a semicolon is followed by
+  // a statement starting at column zero. Trigger-body statements are indented,
+  // which is what keeps them attached to their enclosing CREATE TRIGGER.
   const statements = sql
-    .split(/;\s*(?=CREATE)/i)
+    .split(/;\s*\n(?=(?:--[^\n]*\n)*(?:CREATE|INSERT))/i)
     .map((s) => s.trim().replace(/;$/, ''))
     .filter((s) => s !== '')
   for (const statement of statements) {
@@ -39,6 +41,10 @@ function toMatchQuery(query: string): string | null {
 export async function searchRecipes(query: string): Promise<string[]> {
   const match = toMatchQuery(query)
   if (match === null) return []
+
+  // The FTS5 table is not part of the Prisma schema, so a freshly pushed
+  // database has no RecipeFts until this runs. Cached after the first call.
+  await ensureDbReady()
 
   const rows = await db.$queryRawUnsafe<{ recipeId: string }[]>(
     `SELECT recipeId FROM RecipeFts WHERE RecipeFts MATCH ? ORDER BY rank`,

@@ -125,3 +125,32 @@ describe('deleteRecipe', () => {
     expect(await getRecipe(id)).toBeNull()
   })
 })
+
+describe('listRecipes', () => {
+  it("sorts by total time when sort is 'time'", async () => {
+    const { createRecipe, listRecipes } = await import('./recipes')
+    // Inserted slowest-first so a createdAt fallback would invert the result.
+    await createRecipe({
+      title: 'Slow Braise', instructions: '', prepMinutes: 30, cookMinutes: 180,
+      ingredients: [ingredient('beef chuck', 1, 'kilogram', '1 kg beef chuck')],
+    })
+    await createRecipe({
+      title: 'Quick Toast', instructions: '', prepMinutes: 2, cookMinutes: 3,
+      ingredients: [ingredient('bread', 1, 'slice', '1 slice bread')],
+    })
+
+    const byTime = await listRecipes({ sort: 'time' })
+    const titles = byTime.map((r) => r.title)
+    expect(titles.indexOf('Quick Toast')).toBeLessThan(titles.indexOf('Slow Braise'))
+  })
+
+  it('treats a null prep or cook time as zero when sorting', async () => {
+    const { createRecipe, listRecipes } = await import('./recipes')
+    await createRecipe({
+      title: 'Untimed', instructions: '',
+      ingredients: [ingredient('water', 1, 'cup', '1 cup water')],
+    })
+    const byTime = await listRecipes({ sort: 'time' })
+    expect(byTime[0].title).toBe('Untimed')
+  })
+})

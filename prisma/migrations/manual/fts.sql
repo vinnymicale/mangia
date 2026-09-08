@@ -20,3 +20,11 @@ CREATE TRIGGER IF NOT EXISTS RecipeFtsUpdate AFTER UPDATE ON Recipe BEGIN
   INSERT INTO RecipeFts (recipeId, title, description, instructions)
   VALUES (new.id, new.title, COALESCE(new.description, ''), new.instructions);
 END;
+
+-- Recipes written before the virtual table existed have no trigger-created
+-- row, so index anything missing. The NOT EXISTS guard makes this a no-op
+-- on every boot after the first.
+INSERT INTO RecipeFts (recipeId, title, description, instructions)
+SELECT r.id, r.title, COALESCE(r.description, ''), r.instructions
+FROM Recipe r
+WHERE NOT EXISTS (SELECT 1 FROM RecipeFts f WHERE f.recipeId = r.id);

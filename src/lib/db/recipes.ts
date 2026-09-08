@@ -136,10 +136,16 @@ export async function listRecipes(opts: {
     include: { tags: { include: { tag: true } } },
   })
 
-  // Total time is prep + cook, and either may be null, so it is filtered
-  // in application code rather than SQL.
-  if (opts.maxMinutes === undefined) return recipes
-  return recipes.filter(
-    (r) => (r.prepMinutes ?? 0) + (r.cookMinutes ?? 0) <= opts.maxMinutes!,
-  )
+  // Total time is prep + cook, and either may be null, so it is both sorted
+  // and filtered in application code rather than SQL.
+  const totalMinutes = (r: (typeof recipes)[number]) =>
+    (r.prepMinutes ?? 0) + (r.cookMinutes ?? 0)
+
+  const sorted =
+    opts.sort === 'time'
+      ? [...recipes].sort((a, b) => totalMinutes(a) - totalMinutes(b))
+      : recipes
+
+  if (opts.maxMinutes === undefined) return sorted
+  return sorted.filter((r) => totalMinutes(r) <= opts.maxMinutes!)
 }

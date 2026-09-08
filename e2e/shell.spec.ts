@@ -1,10 +1,7 @@
 import { test, expect } from '@playwright/test'
 
-test('shows the empty state on a fresh install', async ({ page }) => {
-  await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'No recipes yet' })).toBeVisible()
-})
-
+// The empty-state branch is not asserted here: other specs seed the shared e2e
+// database, so "no recipes exist" is not a condition this suite can guarantee.
 test('navigates to the add-recipe page', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Add', exact: true }).click()

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChefHat, Pencil } from 'lucide-react'
 import { getRecipe } from '@/lib/db/recipes'
-import { formatMinutes, formatQuantity } from '@/lib/utils'
+import { formatMinutes, formatQuantity, safeExternalUrl } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,9 +43,13 @@ export default async function RecipePage({
             Edit
           </Link>
         </div>
-        {recipe.sourceUrl && (
+        {safeExternalUrl(recipe.sourceUrl) && (
           <p className="mt-3 text-sm">
-            <a href={recipe.sourceUrl} className="text-(--color-ink-muted) underline">
+            <a
+              href={safeExternalUrl(recipe.sourceUrl)!}
+              rel="noreferrer noopener"
+              className="text-(--color-ink-muted) underline"
+            >
               Source
             </a>
           </p>

@@ -1,13 +1,35 @@
 import Link from 'next/link'
-import { listRecipes } from '@/lib/db/recipes'
-import { formatMinutes } from '@/lib/utils'
+import { db } from '@/lib/db/client'
+import { listRecipes, type RecipeSort } from '@/lib/db/recipes'
+import { BrowseControls } from '@/components/BrowseControls'
+import { RecipeCard } from '@/components/RecipeCard'
 
 export const dynamic = 'force-dynamic'
 
-export default async function HomePage() {
-  const recipes = await listRecipes({ sort: 'recent' })
+const SORTS: RecipeSort[] = ['recent', 'title', 'time', 'cooked']
 
-  if (recipes.length === 0) {
+function toSort(raw: string | undefined): RecipeSort {
+  return SORTS.includes(raw as RecipeSort) ? (raw as RecipeSort) : 'recent'
+}
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string; tag?: string; maxMinutes?: string }>
+}) {
+  const { sort, tag, maxMinutes } = await searchParams
+  const parsedMax = Number.parseInt(maxMinutes ?? '', 10)
+
+  const [recipes, tagRows] = await Promise.all([
+    listRecipes({
+      sort: toSort(sort),
+      tag: tag && tag !== '' ? tag : undefined,
+      maxMinutes: Number.isFinite(parsedMax) && parsedMax > 0 ? parsedMax : undefined,
+    }),
+    db.tag.findMany({ orderBy: { name: 'asc' } }),
+  ])
+
+  if (recipes.length === 0 && !tag && !maxMinutes) {
     return (
       <div className="py-20 text-center">
         <h1 className="text-2xl font-semibold">No recipes yet</h1>
@@ -27,21 +49,18 @@ export default async function HomePage() {
   return (
     <>
       <h1 className="mb-6 text-2xl font-semibold">Recipes</h1>
-      <ul className="grid gap-4 sm:grid-cols-2">
-        {recipes.map((recipe) => (
-          <li key={recipe.id}>
-            <Link
-              href={`/recipes/${recipe.id}`}
-              className="block rounded-xl border border-(--color-border-subtle) bg-(--color-surface-raised) p-4 transition-shadow hover:shadow-md"
-            >
-              <h2 className="font-medium">{recipe.title}</h2>
-              <p className="mt-1 text-sm text-(--color-ink-muted)">
-                {formatMinutes((recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0))}
-              </p>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <BrowseControls tags={tagRows.map((row) => row.name)} />
+      {recipes.length === 0 ? (
+        <p className="text-(--color-ink-muted)">Nothing matches those filters.</p>
+      ) : (
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {recipes.map((recipe) => (
+            <li key={recipe.id}>
+              <RecipeCard {...recipe} />
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   )
 }

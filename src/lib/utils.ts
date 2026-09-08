@@ -22,3 +22,19 @@ export function formatQuantity(quantity: number | null): string {
     ? String(quantity)
     : String(Number(quantity.toFixed(2)))
 }
+
+/**
+ * Returns the URL only if it is safe to put in an href. Recipe source URLs are
+ * user-supplied, so a `javascript:` or `data:` value would otherwise execute on
+ * click. Anything not http(s) yields null and should not be rendered as a link.
+ */
+export function safeExternalUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? url : null
+  } catch {
+    // Relative or malformed values are never valid external sources.
+    return null
+  }
+}
