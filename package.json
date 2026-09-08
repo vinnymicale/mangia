@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run db:e2e && playwright test",
-    "db:e2e": "DATABASE_URL=file:./e2e.db prisma db push",
+    "db:e2e": "rm -f e2e.db e2e.db-journal e2e.db-wal e2e.db-shm && DATABASE_URL=file:./e2e.db prisma db push && DATABASE_URL=file:./e2e.db prisma db execute --file ./prisma/migrations/manual/fts.sql",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
