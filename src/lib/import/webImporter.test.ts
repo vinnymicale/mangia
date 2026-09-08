@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { importFromUrl, htmlToText } from './webImporter'
+import { importFromUrl, htmlToText, isPrivateAddress } from './webImporter'
 import type { LlmProvider, RecipeDraft } from '@/lib/llm/types'
 
 const JSONLD_PAGE = `<html><head><script type="application/ld+json">${JSON.stringify(
@@ -98,5 +98,46 @@ describe('importFromUrl', () => {
         provider: fakeProvider(LLM_DRAFT),
       }),
     ).rejects.toThrow(/example.com\/gone/)
+  })
+})
+
+describe('isPrivateAddress', () => {
+  it('flags loopback, LAN, and metadata addresses', () => {
+    for (const ip of [
+      '127.0.0.1',
+      '10.0.0.5',
+      '192.168.1.1',
+      '172.16.0.1',
+      '172.31.255.255',
+      '169.254.169.254',
+      '100.64.0.1',
+      '0.0.0.0',
+      '::1',
+      'fd00::1',
+      'fe80::1',
+      '::ffff:127.0.0.1',
+    ]) {
+      expect(isPrivateAddress(ip), ip).toBe(true)
+    }
+  })
+
+  it('allows public addresses', () => {
+    for (const ip of ['8.8.8.8', '1.1.1.1', '172.32.0.1', '192.169.0.1', '2606:4700::1']) {
+      expect(isPrivateAddress(ip), ip).toBe(false)
+    }
+  })
+})
+
+describe('importFromUrl SSRF guard', () => {
+  it('refuses to fetch a private address with the real fetcher', async () => {
+    await expect(importFromUrl('http://127.0.0.1:8080/admin')).rejects.toThrow(
+      /private address/,
+    )
+  })
+
+  it('refuses the cloud metadata endpoint', async () => {
+    await expect(
+      importFromUrl('http://169.254.169.254/latest/meta-data/'),
+    ).rejects.toThrow(/private address/)
   })
 })
