@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BookOpen, Plus, Search, ShoppingCart } from 'lucide-react'
+import { BookOpen, Plus, Search, Settings, ShoppingCart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/search', label: 'Search', icon: Search },
   { href: '/lists', label: 'Lists', icon: ShoppingCart },
   { href: '/recipes/new', label: 'Add', icon: Plus },
+  { href: '/settings', label: 'Staples', icon: Settings },
 ]
 
 export function Nav() {
