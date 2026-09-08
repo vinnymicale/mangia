@@ -96,6 +96,36 @@ describe('mergeIngredients', () => {
     expect(merged[0].quantity).toBe(5)
   })
 
+  it('keeps unrecognized units apart instead of summing them', () => {
+    // normalizeUnit returns null for any token it does not know, which used to
+    // drop these into the same bucket as genuinely unitless rows -- summing
+    // "2 sploops" and "3 blorps" into a bare 5.
+    const merged = mergeIngredients([
+      row('i1', 'salt', 2, 'sploops', 'r1'),
+      row('i1', 'salt', 3, 'blorps', 'r2'),
+    ])
+    expect(merged).toHaveLength(2)
+    expect(merged[0].unit).toBe('sploops')
+    expect(merged[1].unit).toBe('blorps')
+  })
+
+  it('does not merge an unrecognized unit with a unitless row', () => {
+    const merged = mergeIngredients([
+      row('i1', 'salt', 2, 'sploops', 'r1'),
+      row('i1', 'salt', 3, null, 'r2'),
+    ])
+    expect(merged).toHaveLength(2)
+  })
+
+  it('still sums two rows sharing the same unrecognized unit', () => {
+    const merged = mergeIngredients([
+      row('i1', 'salt', 2, 'sploops', 'r1'),
+      row('i1', 'salt', 3, 'Sploops', 'r2'),
+    ])
+    expect(merged).toHaveLength(1)
+    expect(merged[0].quantity).toBe(5)
+  })
+
   it('leaves quantity null when every source is null', () => {
     const merged = mergeIngredients([
       row('i1', 'salt', null, null, 'r1'),

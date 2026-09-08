@@ -16,17 +16,51 @@ copying that directory while the container is stopped.
 
 ## Develop
 
+Requires **Node 22 or newer** — `better-sqlite3` declares `engines: >=22` and
+ships prebuilt binaries for the Node 22 ABI. On Node 20 the native module
+segfaults rather than failing cleanly.
+
 ```bash
-npm install
-cp .env.example .env    # point DATABASE_URL at ./dev.db
-npx prisma migrate dev
-node scripts/ensure-fts.mjs
+npm install                       # postinstall runs `prisma generate`
+cp .env.example .env
+sed -i 's|^DATABASE_URL=.*|DATABASE_URL="file:./dev.db"|' .env
+npm run db:migrate                # creates dev.db and applies migrations
+node scripts/ensure-fts.mjs       # builds the FTS5 table and its triggers
 npm run dev
 ```
 
+Open <http://localhost:3000>.
+
+The FTS5 virtual table lives outside the Prisma schema, so
+`scripts/ensure-fts.mjs` has to run after any reset of the database. It is
+idempotent — running it again on an up-to-date database is a no-op.
+
+### Tests
+
 ```bash
-npx vitest run          # unit and component tests
-npx playwright test     # end-to-end tests
+npm run typecheck   # tsc --noEmit
+npm test            # unit and component tests (vitest)
+npm run test:e2e    # rebuilds e2e.db, then runs Playwright
+npm run test:all    # all three, in that order
+```
+
+On a fresh clone the browser has to be installed once before the e2e suite
+will run:
+
+```bash
+npx playwright install --with-deps chromium
+```
+
+`npm run test:e2e` drops and recreates `e2e.db` before every run, so it never
+touches `dev.db`. Running `npx playwright test` directly skips that setup and
+will fail against a missing database.
+
+### Other scripts
+
+```bash
+npm run build       # production build (output: standalone)
+npm run db:generate # regenerate the Prisma client into src/generated/prisma
+npm run db:studio   # browse the database
 ```
 
 ## Entering recipes

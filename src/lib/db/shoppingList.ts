@@ -38,7 +38,11 @@ export function mergeIngredients(rows: MergeRow[]): MergedItem[] {
   const buckets: Bucket[] = []
 
   for (const row of rows) {
-    const unit = row.unit === null ? null : normalizeUnit(row.unit)
+    // normalizeUnit returns null for tokens it does not recognize, which would
+    // otherwise pool every unknown unit -- and genuinely unitless rows -- into
+    // one bucket and sum them. Unknown units keep their own identity instead,
+    // so they only ever merge with an identical unknown unit.
+    const unit = normalizeRow(row.unit)
 
     const bucket = buckets.find(
       (candidate) =>
@@ -73,6 +77,18 @@ export function mergeIngredients(rows: MergeRow[]): MergedItem[] {
   }
 
   return buckets.map(({ baseUnit: _baseUnit, ...item }) => item)
+}
+
+/**
+ * Canonical unit name when the token is known, otherwise the cleaned-up raw
+ * token so it stays distinct from both other unknown units and unitless rows.
+ */
+function normalizeRow(raw: string | null): string | null {
+  if (raw === null) return null
+  const canonical = normalizeUnit(raw)
+  if (canonical !== null) return canonical
+  const trimmed = raw.trim().toLowerCase()
+  return trimmed === '' ? null : trimmed
 }
 
 /** Converts within a compatibility group using each unit's base factor. */
