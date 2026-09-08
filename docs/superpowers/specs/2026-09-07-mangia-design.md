@@ -44,8 +44,13 @@ in without UI changes.
 
 ### Stack
 
-Next.js 15 (App Router) + TypeScript, Prisma ORM, Tailwind CSS + shadcn/ui.
+Next.js 16 (App Router) + TypeScript, Prisma ORM, Tailwind CSS.
 One Node process serves both UI and API routes.
+
+The component set is small and purpose-built rather than pulled from
+shadcn/ui: the interesting surfaces here — the ingredient review table, the
+cooking view — are not generic form widgets, and the handful of buttons and
+inputs around them do not justify the dependency.
 
 ### Database: SQLite
 
