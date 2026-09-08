@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # better-sqlite3 needs a real path even for the unit suite, which swaps in
+      # its own per-test database. The e2e run overrides this with e2e.db.
+      DATABASE_URL: file:./ci.db
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          # better-sqlite3 13 declares engines >=22, and its prebuilds are Node 22 ABI.
+          node-version: '22'
+          cache: npm
+      # postinstall runs `prisma generate`, so the client is ready after this step.
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
