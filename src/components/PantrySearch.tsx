@@ -63,6 +63,7 @@ export function PantrySearch() {
                 title={match.title}
                 prepMinutes={null}
                 cookMinutes={null}
+                subtitle={`${match.haveCount} of ${match.totalCount} ingredients`}
                 footnote={
                   match.missing.length === 0
                     ? 'You have everything'

@@ -5,6 +5,9 @@ const baseURL = `http://127.0.0.1:${PORT}`
 
 export default defineConfig({
   testDir: './e2e',
+  // The screenshot capture is a separate, on-demand run (npm run screenshots).
+  testIgnore: process.env.SCREENSHOTS ? [] : ['**/screenshots.spec.ts'],
+  testMatch: process.env.SCREENSHOTS ? ['**/screenshots.spec.ts'] : undefined,
   fullyParallel: false,
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',

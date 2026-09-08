@@ -2,6 +2,44 @@
 
 A self-hosted recipe manager. Single user, no login, one SQLite file.
 
+## Screenshots
+
+The recipes below are mock data, seeded by the capture script.
+
+**Entering a recipe** — paste the ingredient list in one blob and it comes back
+as editable rows. Lines the parser is unsure of are flagged in amber and can be
+handed to the LLM.
+
+![Pasting an ingredient blob and reviewing the parsed rows](docs/screenshots/entry.png)
+
+**Browsing** — sort by recency or total time, filter by tag or by how long you
+have.
+
+![The recipe library](docs/screenshots/browse.png)
+
+**A recipe** — ingredients, method, and tags.
+
+![A single recipe](docs/screenshots/recipe.png)
+
+**Cooking from what you have** — type in your ingredients and see what is
+within reach, with the gaps called out.
+
+![Searching by ingredients on hand](docs/screenshots/search.png)
+
+**Shopping list** — pick some recipes and the ingredients merge across them,
+with each line tracing back to the recipes that wanted it.
+
+![A shopping list merged from three recipes](docs/screenshots/shopping-list.png)
+
+To regenerate these after a UI change:
+
+```bash
+npm run screenshots
+```
+
+That rebuilds `e2e.db`, seeds the mock recipes, and overwrites
+`docs/screenshots/`. It needs the Playwright browser (see [Tests](#tests)).
+
 ## Run it
 
 ```bash

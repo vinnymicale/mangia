@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   // Playwright drives the dev server over 127.0.0.1; without this Next blocks
   // its own HMR resources as cross-origin and floods the e2e output.
   allowedDevOrigins: ['127.0.0.1'],
+  // The dev overlay badge would otherwise sit in the corner of every README
+  // screenshot. Only the capture run (npm run screenshots) sets this.
+  devIndicators: process.env.SCREENSHOTS ? false : undefined,
 }
 
 export default nextConfig
