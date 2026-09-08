@@ -1,9 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createTestDatabase } from '@/test/setupDb'
-import { mergeIngredients } from './shoppingList'
 import type { ParsedIngredient } from '@/lib/parsing/types'
+import type { mergeIngredients as MergeIngredients } from './shoppingList'
 
 let cleanup: () => void
+// Importing './shoppingList' at module scope would pull in the `db` singleton,
+// which binds DATABASE_URL at construction — before beforeAll can point it at
+// the throwaway database. Every other db test dodges this with a dynamic
+// import; mergeIngredients is pure, so it just needs to load after the env is set.
+let mergeIngredients: typeof MergeIngredients
 
 function ing(
   name: string,
@@ -21,6 +26,10 @@ beforeAll(() => {
   const testDb = createTestDatabase()
   process.env.DATABASE_URL = testDb.url
   cleanup = testDb.cleanup
+})
+
+beforeAll(async () => {
+  ;({ mergeIngredients } = await import('./shoppingList'))
 })
 
 afterAll(() => cleanup())
