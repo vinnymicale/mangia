@@ -10,3 +10,4 @@ out/
 /data/
 test-results/
 playwright-report/
+src/generated/

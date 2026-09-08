@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Recipe {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  sourceUrl    String?
+  imagePath    String?
+  prepMinutes  Int?
+  cookMinutes  Int?
+  servings     Int?
+  instructions String   @default("")
+  notes        String?
+  lastCookedAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ingredients RecipeIngredient[]
+  tags        RecipeTag[]
+  itemSources ShoppingItemSource[]
+
+  @@index([title])
+  @@index([createdAt])
+}
+
+model RecipeIngredient {
+  id           String  @id @default(cuid())
+  recipeId     String
+  ingredientId String
+  quantity     Float?
+  unit         String?
+  note         String?
+  rawText      String
+  sortOrder    Int
+  section      String?
+
+  recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@index([recipeId])
+  @@index([ingredientId])
+}
+
+model Ingredient {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  category String?
+
+  aliases           IngredientAlias[]
+  recipeIngredients RecipeIngredient[]
+  shoppingItems     ShoppingListItem[]
+  pantryStaple      PantryStaple?
+
+  @@index([name])
+}
+
+model IngredientAlias {
+  id           String @id @default(cuid())
+  ingredientId String
+  alias        String @unique
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@index([ingredientId])
+}
+
+model Tag {
+  id      String      @id @default(cuid())
+  name    String      @unique
+  kind    String      @default("freeform")
+  recipes RecipeTag[]
+}
+
+model RecipeTag {
+  recipeId String
+  tagId    String
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([recipeId, tagId])
+}
+
+model ShoppingList {
+  id        String             @id @default(cuid())
+  name      String
+  createdAt DateTime           @default(now())
+  items     ShoppingListItem[]
+}
+
+model ShoppingListItem {
+  id           String  @id @default(cuid())
+  listId       String
+  ingredientId String?
+  quantity     Float?
+  unit         String?
+  checked      Boolean @default(false)
+  manualText   String?
+  note         String?
+  sortOrder    Int     @default(0)
+
+  list       ShoppingList         @relation(fields: [listId], references: [id], onDelete: Cascade)
+  ingredient Ingredient?          @relation(fields: [ingredientId], references: [id])
+  sources    ShoppingItemSource[]
+
+  @@index([listId])
+}
+
+model ShoppingItemSource {
+  shoppingListItemId String
+  recipeId           String
+
+  item   ShoppingListItem @relation(fields: [shoppingListItemId], references: [id], onDelete: Cascade)
+  recipe Recipe           @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([shoppingListItemId, recipeId])
+}
+
+model PantryStaple {
+  id           String @id @default(cuid())
+  name         String @unique
+  ingredientId String @unique
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+}
