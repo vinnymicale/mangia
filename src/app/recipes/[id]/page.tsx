@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChefHat, Pencil } from 'lucide-react'
 import { getRecipe } from '@/lib/db/recipes'
-import { button, card } from '@/components/ui'
+import { BackLink, button, card } from '@/components/ui'
 import {
   cn,
   formatMinutes,
@@ -38,6 +38,7 @@ export default async function RecipePage({
 
   return (
     <article>
+      <BackLink href="/">Recipes</BackLink>
       <header className="border-b border-(--color-border) pb-8 sm:pb-9">
         {/* Title and stats share the width: the panel gives the numbers a home
             on the right rather than leaving that half of the header empty. */}

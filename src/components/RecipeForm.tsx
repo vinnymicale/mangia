@@ -128,6 +128,21 @@ export function RecipeForm({ initial }: { initial: RecipeFormValue }) {
         />
       </label>
 
+      {/* The description is what the browse card shows under the title, so it
+          needs to be editable here rather than only ever set by an import. */}
+      <label className="block max-w-2xl">
+        <span className={labelClass}>Description</span>
+        <textarea
+          rows={3}
+          placeholder="A short, appetizing description…"
+          className={cn(field, 'mt-1.5 leading-relaxed')}
+          value={value.description ?? ''}
+          onChange={(event) =>
+            patch({ description: event.target.value === '' ? null : event.target.value })
+          }
+        />
+      </label>
+
       <div className="grid max-w-xl gap-4 sm:grid-cols-3">
         <label className="block">
           <span className={labelClass}>Servings</span>

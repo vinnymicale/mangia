@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getRecipe } from '@/lib/db/recipes'
 import { RecipeForm, type RecipeFormValue } from '@/components/RecipeForm'
-import { PageTitle } from '@/components/ui'
+import { BackLink, PageTitle } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,6 +41,7 @@ export default async function EditRecipePage({
 
   return (
     <>
+      <BackLink href={`/recipes/${recipe.id}`}>{recipe.title}</BackLink>
       <PageTitle>Edit recipe</PageTitle>
       <RecipeForm initial={toFormValue(recipe)} />
     </>

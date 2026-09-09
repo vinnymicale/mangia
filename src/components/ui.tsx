@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
@@ -44,7 +46,7 @@ export const card = cn(
 )
 
 /** The small caps-free label above a grouped control. */
-export const label = 'text-sm font-medium text-(--color-ink)'
+export const label = 'text-[13px] font-semibold tracking-[0.01em] text-(--color-ink)'
 
 /**
  * Page heading. `count` renders as a quiet tally beside the title when
@@ -72,5 +74,22 @@ export function PageTitle({
       </div>
       {lede && <p className="mt-3 max-w-prose text-(--color-ink-2)">{lede}</p>}
     </header>
+  )
+}
+
+/**
+ * The quiet "← Recipes" affordance the mockup puts above a detail view. It
+ * sits in the left margin of the content, so it reads as a way back out
+ * rather than as a primary action competing with the title.
+ */
+export function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="mb-7 inline-flex items-center gap-1.5 py-1 text-[13px] font-medium text-(--color-ink-2) transition-colors hover:text-(--color-ink) sm:mb-[30px]"
+    >
+      <ArrowLeft aria-hidden size={14} strokeWidth={1.75} />
+      {children}
+    </Link>
   )
 }
