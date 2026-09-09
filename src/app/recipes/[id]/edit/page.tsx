@@ -13,6 +13,7 @@ function toFormValue(recipe: StoredRecipe): RecipeFormValue {
     title: recipe.title,
     description: recipe.description,
     instructions: recipe.instructions,
+    notes: recipe.notes,
     servings: recipe.servings,
     prepMinutes: recipe.prepMinutes,
     cookMinutes: recipe.cookMinutes,

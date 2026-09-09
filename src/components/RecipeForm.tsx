@@ -13,6 +13,7 @@ export interface RecipeFormValue {
   title: string
   description: string | null
   instructions: string
+  notes: string | null
   servings: number | null
   prepMinutes: number | null
   cookMinutes: number | null
@@ -22,7 +23,7 @@ export interface RecipeFormValue {
 }
 
 export const EMPTY_RECIPE: RecipeFormValue = {
-  title: '', description: null, instructions: '', servings: null,
+  title: '', description: null, instructions: '', notes: null, servings: null,
   prepMinutes: null, cookMinutes: null, sourceUrl: null,
   ingredients: [], tags: [],
 }
@@ -192,6 +193,22 @@ export function RecipeForm({ initial }: { initial: RecipeFormValue }) {
           className={cn(field, 'mt-1.5')}
           value={value.instructions}
           onChange={(event) => patch({ instructions: event.target.value })}
+        />
+      </label>
+
+      {/* Notes are the cook's own record -- what they changed, what to do
+          differently next time -- so they sit apart from the method rather
+          than being folded into it. */}
+      <label className="block">
+        <span className={labelClass}>Notes</span>
+        <textarea
+          rows={4}
+          placeholder="Halved the salt. Needed 10 more minutes…"
+          className={cn(field, 'mt-1.5 leading-relaxed')}
+          value={value.notes ?? ''}
+          onChange={(event) =>
+            patch({ notes: event.target.value === '' ? null : event.target.value })
+          }
         />
       </label>
 

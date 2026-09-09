@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { safeExternalUrl } from './utils'
+import { safeExternalUrl, toParagraphs } from './utils'
 
 describe('safeExternalUrl', () => {
   it('passes through http and https urls', () => {
@@ -16,5 +16,22 @@ describe('safeExternalUrl', () => {
     expect(safeExternalUrl(null)).toBeNull()
     expect(safeExternalUrl('')).toBeNull()
     expect(safeExternalUrl('/recipes/1')).toBeNull()
+  })
+})
+
+describe('toParagraphs', () => {
+  it('splits on blank lines only', () => {
+    expect(toParagraphs('One.\n\nTwo.')).toEqual(['One.', 'Two.'])
+  })
+
+  it('keeps a wrapped single paragraph intact', () => {
+    // toSteps would split this into two; notes are prose, not a sequence.
+    expect(toParagraphs('A long note\nthat wraps.')).toEqual([
+      'A long note\nthat wraps.',
+    ])
+  })
+
+  it('drops empty blocks', () => {
+    expect(toParagraphs('\n\n  \n\nOnly.\n\n')).toEqual(['Only.'])
   })
 })

@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Check, ChevronDown } from 'lucide-react'
+import { button } from '@/components/ui'
 import { cn, formatQuantity } from '@/lib/utils'
 
 export interface CookingIngredient {
@@ -12,9 +14,14 @@ export interface CookingIngredient {
 }
 
 export interface CookingViewProps {
+  recipeId: string
   title: string
   ingredients: CookingIngredient[]
   steps: string[]
+  /** The cook's own notes, already split into paragraphs. Empty when none. */
+  notes: string[]
+  /** Set when the recipe has been cooked before, for the button's caption. */
+  lastCookedAt: string | null
 }
 
 /**
@@ -48,9 +55,87 @@ function useWakeLock() {
   }, [])
 }
 
-export function CookingView({ title, ingredients, steps }: CookingViewProps) {
+/**
+ * Remembers whether the notes panel is collapsed, per recipe.
+ *
+ * Hiding notes is a decision about this dish -- "I already know to halve the
+ * salt" -- not a global preference, so the choice is keyed by recipe id. It
+ * starts open: notes only exist because the cook wrote them for this moment.
+ * Storage is read in an effect rather than during render so the server and the
+ * first client paint agree.
+ */
+function useNotesOpen(recipeId: string) {
+  const [open, setOpen] = useState(true)
+
+  useEffect(() => {
+    try {
+      setOpen(window.localStorage.getItem(notesKey(recipeId)) !== 'closed')
+    } catch {
+      // Private browsing and blocked storage just mean the default sticks.
+    }
+  }, [recipeId])
+
+  function toggleOpen() {
+    setOpen((current) => {
+      const next = !current
+      try {
+        window.localStorage.setItem(notesKey(recipeId), next ? 'open' : 'closed')
+      } catch {
+        // Not worth interrupting the cook over.
+      }
+      return next
+    })
+  }
+
+  return [open, toggleOpen] as const
+}
+
+function notesKey(recipeId: string): string {
+  return `mangia:cook-notes-open:${recipeId}`
+}
+
+/** "3 Feb 2026" -- short enough to sit under the button. */
+function formatCookedOn(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+export function CookingView({
+  recipeId,
+  title,
+  ingredients,
+  steps,
+  notes,
+  lastCookedAt,
+}: CookingViewProps) {
   useWakeLock()
+  const [notesOpen, toggleNotes] = useNotesOpen(recipeId)
   const [done, setDone] = useState<Set<string>>(new Set())
+  const [cookedAt, setCookedAt] = useState(lastCookedAt)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  /**
+   * Writes the cook date. Nothing else records it, so without this the
+   * "Last cooked" sort on the browse page would never have anything to sort by.
+   */
+  async function markCooked() {
+    setSaving(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/recipes/${recipeId}/cooked`, { method: 'POST' })
+      if (!response.ok) throw new Error()
+      const body: { lastCookedAt: string } = await response.json()
+      setCookedAt(body.lastCookedAt)
+    } catch {
+      setError('Could not record that. Try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   function toggle(key: string) {
     setDone((current) => {
@@ -64,6 +149,41 @@ export function CookingView({ title, ingredients, steps }: CookingViewProps) {
   return (
     <div className="cooking-view space-y-12">
       <h1 className="text-4xl leading-tight font-semibold text-balance">{title}</h1>
+
+      {/* Notes sit above the method because they change how the method is
+          run -- "halved the salt" is only useful before the salt goes in.
+          They collapse because on a familiar dish that advice is already
+          absorbed, and the screen at the stove is worth more than the
+          reminder. Nothing renders at all when there are no notes. */}
+      {notes.length > 0 && (
+        <section className="-mt-4 rounded-[11px] border border-(--color-border) bg-(--color-surface)">
+          <h2>
+            <button
+              type="button"
+              onClick={toggleNotes}
+              aria-expanded={notesOpen}
+              aria-controls="cooking-notes"
+              className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left text-lg font-bold sm:px-5"
+            >
+              Notes
+              <ChevronDown
+                aria-hidden
+                className={cn(
+                  'size-5 shrink-0 text-(--color-ink-2) transition-transform',
+                  notesOpen && 'rotate-180',
+                )}
+              />
+            </button>
+          </h2>
+          <div id="cooking-notes" hidden={!notesOpen} className="space-y-3.5 px-4 pb-4 sm:px-5 sm:pb-5">
+            {notes.map((note, index) => (
+              <p key={index} className="leading-relaxed text-(--color-ink-2)">
+                {note}
+              </p>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-5 text-2xl font-bold">Ingredients</h2>
@@ -132,6 +252,31 @@ export function CookingView({ title, ingredients, steps }: CookingViewProps) {
             )
           })}
         </ol>
+      </section>
+
+      <section className="space-y-2">
+        <button
+          type="button"
+          onClick={() => void markCooked()}
+          disabled={saving}
+          className={button({ size: 'lg' })}
+        >
+          <Check className="size-5" aria-hidden />
+          {cookedAt === null ? 'Mark as cooked' : 'Cooked again'}
+        </button>
+        {cookedAt !== null && (
+          <p className="text-sm text-(--color-ink-2)">
+            Last cooked {formatCookedOn(cookedAt)}
+          </p>
+        )}
+        {error !== null && (
+          <p
+            role="alert"
+            className="rounded-lg bg-(--color-alert-soft) px-4 py-3 text-sm text-(--color-alert)"
+          >
+            {error}
+          </p>
+        )}
       </section>
     </div>
   )

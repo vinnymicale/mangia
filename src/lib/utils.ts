@@ -41,6 +41,20 @@ export function safeExternalUrl(url: string | null | undefined): string | null {
   }
 }
 
+/**
+ * Splits free text into paragraphs on blank lines only.
+ *
+ * Unlike `toSteps`, a single newline does not start a new block: notes are
+ * prose that may wrap, not a numbered sequence, so breaking on every newline
+ * would shatter one thought into fragments.
+ */
+export function toParagraphs(text: string): string[] {
+  return text
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
 /** Splits recipe instructions on blank lines, falling back to single newlines. */
 export function toSteps(instructions: string): string[] {
   const paragraphs = instructions

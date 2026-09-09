@@ -8,6 +8,7 @@ import {
   formatMinutes,
   formatQuantity,
   safeExternalUrl,
+  toParagraphs,
   toSteps,
 } from '@/lib/utils'
 
@@ -150,6 +151,22 @@ export default async function RecipePage({
             ))}
           </ol>
 
+          {/* The cook's own record, kept below the method: it is read after
+              the recipe is already familiar, and it is what carries over from
+              the last time this was made. Blank lines start new paragraphs so
+              notes accumulated across several cooks stay legible. */}
+          {recipe.notes && (
+            <div className="mt-12 border-t border-(--color-border) pt-8">
+              <h2 className="eyebrow">Notes</h2>
+              <div className="mt-4 max-w-prose space-y-3.5">
+                {toParagraphs(recipe.notes).map((note, index) => (
+                  <p key={index} className="text-base leading-[1.72] text-(--color-ink-2)">
+                    {note}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </article>
