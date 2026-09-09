@@ -154,3 +154,40 @@ describe('listRecipes', () => {
     expect(byTime[0].title).toBe('Untimed')
   })
 })
+
+describe('notes', () => {
+  it('round-trips notes through create, update, and clearing', async () => {
+    const { createRecipe, updateRecipe, getRecipe } = await import('./recipes')
+    const id = await createRecipe({
+      title: 'Braise',
+      instructions: 'Sear. Simmer.',
+      notes: 'Halved the salt.\n\nNeeded 10 more minutes.',
+      ingredients: [ingredient('beef', 2, 'pound', '2 lb beef')],
+    })
+    expect((await getRecipe(id))?.notes).toBe(
+      'Halved the salt.\n\nNeeded 10 more minutes.',
+    )
+
+    await updateRecipe(id, {
+      title: 'Braise', instructions: 'Sear. Simmer.',
+      notes: 'Use the smaller pot.', ingredients: [],
+    })
+    expect((await getRecipe(id))?.notes).toBe('Use the smaller pot.')
+
+    // Clearing the field must actually null it out rather than being treated
+    // as "no change" -- otherwise a deleted note silently comes back.
+    await updateRecipe(id, {
+      title: 'Braise', instructions: 'Sear. Simmer.',
+      notes: null, ingredients: [],
+    })
+    expect((await getRecipe(id))?.notes).toBeNull()
+  })
+
+  it('defaults to null when a recipe is saved without notes', async () => {
+    const { createRecipe, getRecipe } = await import('./recipes')
+    const id = await createRecipe({
+      title: 'Toast', instructions: 'Toast it.', ingredients: [],
+    })
+    expect((await getRecipe(id))?.notes).toBeNull()
+  })
+})

@@ -30,6 +30,9 @@ export async function POST(
       unit: item.unit,
       checked: item.checked,
       note: item.note,
+      // The list groups by category, so it has to come back with the item or
+      // every newly added row lands in "Other" until the page is reloaded.
+      category: item.ingredient?.category ?? null,
     },
     { status: 201 },
   )

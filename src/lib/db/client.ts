@@ -26,10 +26,16 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
  * This deliberately does NOT run at module scope: search.ts imports `db` from
  * here, so calling it from this file would create an import cycle in which
  * ensureFtsSchema runs before `db` is assigned.
+ *
+ * The category backfill rides along for the same reason -- it too fixes up
+ * rows that predate a schema feature, and it too needs `db` to exist first.
  */
 export function ensureDbReady(): Promise<void> {
-  globalForPrisma.ftsReady ??= import('./search').then((m) =>
-    m.ensureFtsSchema(),
-  )
+  globalForPrisma.ftsReady ??= (async () => {
+    const { ensureFtsSchema } = await import('./search')
+    await ensureFtsSchema()
+    const { backfillCategories } = await import('./ingredients')
+    await backfillCategories()
+  })()
   return globalForPrisma.ftsReady
 }

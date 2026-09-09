@@ -17,7 +17,7 @@ export async function ensureFtsSchema(): Promise<void> {
   // a statement starting at column zero. Trigger-body statements are indented,
   // which is what keeps them attached to their enclosing CREATE TRIGGER.
   const statements = sql
-    .split(/;\s*\n(?=(?:--[^\n]*\n)*(?:CREATE|INSERT))/i)
+    .split(/;\s*\n(?=(?:--[^\n]*\n)*(?:CREATE|INSERT|DROP))/i)
     .map((s) => s.trim().replace(/;$/, ''))
     .filter((s) => s !== '')
   for (const statement of statements) {
@@ -47,7 +47,7 @@ export async function searchRecipes(query: string): Promise<string[]> {
   await ensureDbReady()
 
   const rows = await db.$queryRawUnsafe<{ recipeId: string }[]>(
-    `SELECT recipeId FROM RecipeFts WHERE RecipeFts MATCH ? ORDER BY rank`,
+    `SELECT recipeId FROM RecipeFts2 WHERE RecipeFts2 MATCH ? ORDER BY rank`,
     match,
   )
   return rows.map((row) => row.recipeId)
@@ -73,7 +73,10 @@ export async function matchByIngredients(
   const have = new Set(names.map(normalizeIngredientName).filter((n) => n !== ''))
   if (have.size === 0) return []
 
+  // Only recipes that use at least one of the given ingredients can score
+  // above zero, so the scan is scoped to those rather than the whole table.
   const recipes = await db.recipe.findMany({
+    where: { ingredients: { some: { ingredient: { name: { in: [...have] } } } } },
     include: { ingredients: { include: { ingredient: true } } },
   })
 

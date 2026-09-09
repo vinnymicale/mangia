@@ -47,32 +47,52 @@ export function ShoppingListView({
 }) {
   const [rows, setRows] = useState(items)
   const [draft, setDraft] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
+  /**
+   * The checkbox updates optimistically -- ticking things off should feel
+   * instant while shopping -- and reverts if the write did not land, so the
+   * box never shows a state the server disagrees with.
+   */
   async function toggle(id: string, checked: boolean) {
     setRows((current) =>
       current.map((row) => (row.id === id ? { ...row, checked } : row)),
     )
-    await fetch(`/api/lists/${listId}/items`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ itemId: id, checked }),
-    })
+    setError(null)
+    try {
+      const response = await fetch(`/api/lists/${listId}/items`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ itemId: id, checked }),
+      })
+      if (!response.ok) throw new Error()
+    } catch {
+      setRows((current) =>
+        current.map((row) => (row.id === id ? { ...row, checked: !checked } : row)),
+      )
+      setError('Could not save that change.')
+    }
   }
 
   async function add() {
     const name = draft.trim()
     if (name === '') return
-    setDraft('')
-    const response = await fetch(`/api/lists/${listId}/items`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name }),
-    })
-    const item = await response.json()
-    setRows((current) => [
-      ...current,
-      { ...item, category: item.ingredient?.category ?? null, sourceTitles: [], checked: false },
-    ])
+    setError(null)
+    try {
+      const response = await fetch(`/api/lists/${listId}/items`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      if (!response.ok) throw new Error()
+      const item: ShoppingItemView = await response.json()
+      // The draft is cleared only once the item exists, so a failed add leaves
+      // what was typed in the box to retry.
+      setDraft('')
+      setRows((current) => [...current, { ...item, sourceTitles: [] }])
+    } catch {
+      setError('Could not add that item.')
+    }
   }
 
   return (
@@ -156,6 +176,15 @@ export function ShoppingListView({
           Add
         </button>
       </div>
+
+      {error !== null && (
+        <p
+          role="alert"
+          className="rounded-lg bg-(--color-alert-soft) px-4 py-3 text-sm text-(--color-alert)"
+        >
+          {error}
+        </p>
+      )}
     </div>
   )
 }
