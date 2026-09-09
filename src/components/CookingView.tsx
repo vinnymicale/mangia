@@ -62,12 +62,12 @@ export function CookingView({ title, ingredients, steps }: CookingViewProps) {
   }
 
   return (
-    <div className="cooking-view space-y-10">
-      <h1 className="text-3xl font-semibold">{title}</h1>
+    <div className="cooking-view space-y-12">
+      <h1 className="text-4xl leading-tight font-semibold text-balance">{title}</h1>
 
       <section>
-        <h2 className="mb-4 text-2xl font-semibold">Ingredients</h2>
-        <ul className="space-y-3">
+        <h2 className="mb-5 text-2xl font-semibold">Ingredients</h2>
+        <ul className="space-y-4">
           {ingredients.map((row) => {
             const key = `ingredient:${row.id}`
             const checked = done.has(key)
@@ -78,10 +78,10 @@ export function CookingView({ title, ingredients, steps }: CookingViewProps) {
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggle(key)}
-                    className="mt-1.5 size-5 shrink-0"
+                    className="mt-2 size-6 shrink-0"
                   />
-                  <span className={cn(checked && 'text-(--color-ink-muted) line-through')}>
-                    <span className="font-medium">
+                  <span className={cn('transition-colors', checked && 'text-(--color-ink-muted) line-through')}>
+                    <span className="tnum font-medium text-(--color-accent)">
                       {[formatQuantity(row.quantity), row.unit].filter(Boolean).join(' ')}
                     </span>{' '}
                     {row.name}
@@ -95,21 +95,38 @@ export function CookingView({ title, ingredients, steps }: CookingViewProps) {
       </section>
 
       <section>
-        <h2 className="mb-4 text-2xl font-semibold">Steps</h2>
-        <ol className="space-y-5">
+        <h2 className="mb-5 text-2xl font-semibold">Steps</h2>
+        <ol className="space-y-6">
           {steps.map((step, index) => {
             const key = `step:${index}`
             const checked = done.has(key)
             return (
-              <li key={key}>
-                <label className="flex items-start gap-3">
+              <li
+                key={key}
+                className={cn(
+                  'rounded-xl border p-4 transition-colors sm:p-5',
+                  checked
+                    ? 'border-transparent bg-(--color-surface-sunken)'
+                    : 'border-(--color-border-subtle) bg-(--color-surface-raised)',
+                )}
+              >
+                <label className="flex items-start gap-4">
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggle(key)}
-                    className="mt-1.5 size-5 shrink-0"
+                    className="mt-2 size-6 shrink-0"
                   />
-                  <span className={cn(checked && 'text-(--color-ink-muted)')}>{step}</span>
+                  {/* Steps really are a sequence, so the number is information. */}
+                  <span
+                    aria-hidden
+                    className="tnum mt-1 w-7 shrink-0 font-serif text-2xl font-semibold text-(--color-accent)"
+                  >
+                    {index + 1}
+                  </span>
+                  <span className={cn('transition-colors', checked && 'text-(--color-ink-muted)')}>
+                    {step}
+                  </span>
                 </label>
               </li>
             )

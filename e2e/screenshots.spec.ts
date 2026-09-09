@@ -12,6 +12,7 @@ const VIEWPORT = { width: 1280, height: 900 }
 const RECIPES = [
   {
     title: 'Weeknight Turkey Chili',
+    description: 'A thick, forgiving chili that gets better on the second day.',
     instructions:
       'Brown the turkey with the onion and pepper.\nStir in the chili powder and cumin, then the tomatoes and beans.\nSimmer 25 minutes, uncovered, until it thickens.\nTaste for salt and finish with lime.',
     servings: 6, prepMinutes: 15, cookMinutes: 35,
@@ -29,6 +30,7 @@ const RECIPES = [
   },
   {
     title: 'Garlic Ginger Chicken Stir Fry',
+    description: 'Everything prepped before the wok goes on, then dinner in twelve minutes.',
     instructions:
       'Slice the chicken thin and toss with cornstarch.\nGet the wok ripping hot, sear the chicken, set it aside.\nStir fry the broccoli and carrot 3 minutes.\nReturn the chicken, add the sauce, toss until glossy.',
     servings: 4, prepMinutes: 20, cookMinutes: 12,
@@ -46,6 +48,7 @@ const RECIPES = [
   },
   {
     title: 'Buttermilk Pancakes',
+    description: 'Tall, tangy, and worth resting the batter for.',
     instructions:
       'Whisk the dry ingredients.\nWhisk the wet separately, then fold together -- lumps are fine.\nRest the batter 10 minutes.\nGriddle over medium until the bubbles set, then flip.',
     servings: 4, prepMinutes: 10, cookMinutes: 15,
@@ -62,6 +65,7 @@ const RECIPES = [
   },
   {
     title: 'Sheet Pan Salmon and Potatoes',
+    description: 'The potatoes get a head start so everything finishes together.',
     instructions:
       'Roast the halved potatoes at 425F for 20 minutes.\nPush them aside, add the salmon and asparagus.\nRoast 12 more minutes until the salmon flakes.\nFinish with lemon and dill.',
     servings: 4, prepMinutes: 10, cookMinutes: 32,
@@ -77,6 +81,7 @@ const RECIPES = [
   },
   {
     title: 'Slow Cooker Pulled Pork',
+    description: 'Eight hours of nothing, then pork that shreds with a fork.',
     instructions:
       'Rub the shoulder with the spice mix the night before.\nSet it on the onions with the vinegar and stock.\nLow for 8 hours, until it shreds against the spoon.\nSkim the fat, shred, and toss with the reduced juices.',
     servings: 8, prepMinutes: 20, cookMinutes: 480,
@@ -92,6 +97,7 @@ const RECIPES = [
   },
   {
     title: 'Tomato Basil Soup',
+    description: 'Roasting the tomatoes first is the whole trick.',
     instructions:
       'Sweat the onion and garlic in butter until soft.\nAdd the tomatoes and stock, simmer 20 minutes.\nBlend smooth, then stir in the cream and torn basil.',
     servings: 4, prepMinutes: 10, cookMinutes: 30,
@@ -127,12 +133,12 @@ test('captures the README screenshots', async ({ page, request }) => {
   // Browse: the whole library, most recent first.
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Tomato Basil Soup' })).toBeVisible()
-  await page.screenshot({ path: `${OUT}/browse.png` })
+  await page.screenshot({ path: `${OUT}/browse.png`, caret: 'initial' })
 
   // A single recipe, ingredients and method side by side.
   await page.goto(`/recipes/${ids[1]}`)
   await expect(page.getByRole('heading', { name: 'Garlic Ginger Chicken Stir Fry' })).toBeVisible()
-  await page.screenshot({ path: `${OUT}/recipe.png` })
+  await page.screenshot({ path: `${OUT}/recipe.png`, caret: 'initial' })
 
   // The paste-a-blob entry path, mid-review, with the parsed rows showing.
   await page.goto('/recipes/new')
@@ -141,7 +147,7 @@ test('captures the README screenshots', async ({ page, request }) => {
   )
   await page.getByRole('button', { name: 'Parse ingredients' }).click()
   await expect(page.getByLabel('Ingredient for line 1')).toHaveValue('all-purpose flour')
-  await page.screenshot({ path: `${OUT}/entry.png` })
+  await page.screenshot({ path: `${OUT}/entry.png`, caret: 'initial' })
 
   // Ingredients-on-hand search, showing coverage and what is missing.
   await page.goto('/search')
@@ -150,7 +156,7 @@ test('captures the README screenshots', async ({ page, request }) => {
   )
   await page.getByRole('button', { name: 'What can I make?' }).click()
   await expect(page.getByRole('heading', { name: 'Garlic Ginger Chicken Stir Fry' })).toBeVisible()
-  await page.screenshot({ path: `${OUT}/search.png` })
+  await page.screenshot({ path: `${OUT}/search.png`, caret: 'initial' })
 
   // A shopping list merged from three recipes.
   const listRes = await request.post('/api/lists', {
@@ -158,5 +164,5 @@ test('captures the README screenshots', async ({ page, request }) => {
   })
   const { id: listId } = await listRes.json()
   await page.goto(`/lists/${listId}`)
-  await page.screenshot({ path: `${OUT}/shopping-list.png` })
+  await page.screenshot({ path: `${OUT}/shopping-list.png`, caret: 'initial' })
 })

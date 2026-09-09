@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { RecipeCard } from './RecipeCard'
+import { button, field, label as labelClass } from '@/components/ui'
+import { cn } from '@/lib/utils'
 import type { CoverageMatch } from '@/lib/db/search'
 
 export function PantrySearch() {
@@ -29,14 +31,15 @@ export function PantrySearch() {
   }
 
   return (
-    <section className="space-y-4">
-      <label className="block">
-        <span className="font-medium">What do you have?</span>
+    <section>
+      <h2 className="text-2xl font-semibold">Cook from the pantry</h2>
+      <label className="mt-4 block max-w-2xl">
+        <span className={labelClass}>What do you have?</span>
         <textarea
           aria-label="Ingredients on hand"
-          rows={4}
+          rows={2}
           placeholder="eggs, parmesan, bacon, spaghetti"
-          className="mt-2 w-full rounded-lg border border-(--color-border-subtle) bg-(--color-surface-raised) px-3 py-2"
+          className={cn(field, 'mt-2')}
           value={text}
           onChange={(event) => setText(event.target.value)}
         />
@@ -45,17 +48,19 @@ export function PantrySearch() {
         type="button"
         disabled={busy || text.trim() === ''}
         onClick={() => void run()}
-        className="rounded-lg bg-(--color-accent) px-4 py-2 font-medium text-(--color-accent-ink) disabled:opacity-60"
+        className={cn(button({ size: 'lg' }), 'mt-4')}
       >
         {busy ? 'Matching…' : 'What can I make?'}
       </button>
 
       {matches !== null && matches.length === 0 && (
-        <p className="text-(--color-ink-muted)">Nothing comes close with those ingredients.</p>
+        <p className="mt-6 text-(--color-ink-muted)">
+          Nothing comes close with those ingredients.
+        </p>
       )}
 
       {matches !== null && matches.length > 0 && (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {matches.map((match) => (
             <li key={match.recipeId}>
               <RecipeCard
@@ -64,6 +69,11 @@ export function PantrySearch() {
                 prepMinutes={null}
                 cookMinutes={null}
                 subtitle={`${match.haveCount} of ${match.totalCount} ingredients`}
+                coverage={
+                  match.totalCount === 0
+                    ? 0
+                    : match.haveCount / match.totalCount
+                }
                 footnote={
                   match.missing.length === 0
                     ? 'You have everything'

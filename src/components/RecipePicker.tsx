@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { button, card } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 export interface PickableRecipe {
   id: string
@@ -39,15 +41,24 @@ export function RecipePicker({ recipes }: { recipes: PickableRecipe[] }) {
   }
 
   return (
-    <section className="space-y-4">
-      <h2 className="font-medium">Build a list</h2>
-      <ul className="space-y-2">
+    <section>
+      <h2 className="text-2xl font-semibold">Build a list</h2>
+      <p className="mt-1.5 text-sm text-(--color-ink-muted)">
+        Choose the recipes you are cooking and mangia merges their ingredients.
+      </p>
+
+      <ul className={cn(card, 'mt-5 divide-y divide-(--color-border-subtle) overflow-hidden')}>
         {recipes.map((recipe) => (
           <li key={recipe.id}>
-            <label className="flex items-center gap-3">
+            <label
+              className={cn(
+                'flex cursor-pointer items-center gap-3 px-5 py-3 transition-colors',
+                selected.has(recipe.id) && 'bg-(--color-accent-soft)/50',
+              )}
+            >
               <input
                 type="checkbox"
-                className="size-4"
+                className="size-4 shrink-0"
                 checked={selected.has(recipe.id)}
                 onChange={() => toggle(recipe.id)}
               />
@@ -57,7 +68,7 @@ export function RecipePicker({ recipes }: { recipes: PickableRecipe[] }) {
         ))}
       </ul>
 
-      <label className="flex items-center gap-2 text-sm">
+      <label className="mt-5 flex items-center gap-2 text-sm">
         <input
           type="checkbox"
           className="size-4"
@@ -71,7 +82,7 @@ export function RecipePicker({ recipes }: { recipes: PickableRecipe[] }) {
         type="button"
         disabled={busy || selected.size === 0}
         onClick={() => void generate()}
-        className="rounded-lg bg-(--color-accent) px-4 py-2 font-medium text-(--color-accent-ink) disabled:opacity-60"
+        className={cn(button({ size: 'lg' }), 'mt-5')}
       >
         {busy ? 'Building…' : `Make a list from ${selected.size} recipe${selected.size === 1 ? '' : 's'}`}
       </button>

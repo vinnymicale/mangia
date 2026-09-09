@@ -3,7 +3,8 @@
 import { Trash2, Plus, Sparkles, AlertTriangle } from 'lucide-react'
 import { parseQuantity } from '@/lib/parsing/fractions'
 import { isLowConfidence, type ParsedIngredient } from '@/lib/parsing/types'
-import { formatQuantity } from '@/lib/utils'
+import { button } from '@/components/ui'
+import { cn, formatQuantity } from '@/lib/utils'
 
 export interface IngredientReviewTableProps {
   value: ParsedIngredient[]
@@ -12,8 +13,12 @@ export interface IngredientReviewTableProps {
   cleaningUp?: boolean
 }
 
-const FIELD =
-  'w-full rounded-md border border-(--color-border-subtle) bg-(--color-surface-raised) px-2 py-1.5 text-sm focus:border-(--color-accent) focus:outline-none'
+/** Compact variant of the shared field, sized for a dense grid of cells. */
+const CELL = cn(
+  'w-full rounded-md border border-(--color-border-subtle) bg-(--color-surface-raised)',
+  'px-2 py-1.5 text-sm transition-colors',
+  'hover:border-(--color-border-strong) focus:border-(--color-accent) focus:outline-none',
+)
 
 export function IngredientReviewTable({
   value,
@@ -43,25 +48,45 @@ export function IngredientReviewTable({
 
   return (
     <div className="space-y-3">
-      <table className="w-full border-separate border-spacing-y-2">
-        <thead className="sr-only">
-          <tr>
-            <th>Quantity</th><th>Unit</th><th>Ingredient</th><th>Note</th><th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+      {/* One bordered surface rather than floating rows: this is a table the
+          cook proofreads top to bottom, and the columns need naming. */}
+      <div className="overflow-hidden rounded-2xl border border-(--color-border-subtle) bg-(--color-surface-raised)">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-(--color-border-subtle) text-left text-xs text-(--color-ink-muted)">
+              <th className="border-l-2 border-l-transparent py-2 pr-2 pl-4 font-medium">
+                Quantity
+              </th>
+              <th className="px-2 py-2 font-medium">Unit</th>
+              <th className="px-2 py-2 font-medium">Ingredient</th>
+              <th className="px-2 py-2 font-medium">Note</th>
+              <th className="w-10 py-2 pr-2">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-(--color-border-subtle)">
           {value.map((row, index) => {
             const needsReview = isLowConfidence(row)
             return (
               <tr
                 key={index}
                 aria-label={needsReview ? 'Needs review' : undefined}
-                className={needsReview ? 'bg-amber-500/10' : undefined}
+                className={cn(needsReview && 'bg-(--color-alert-soft)')}
               >
-                <td className="w-20 align-top">
+                {/* A marked edge rather than a full wash: the flag belongs on
+                    the row, not over the fields the cook has to correct. */}
+                <td
+                  className={cn(
+                    'w-24 border-l-2 py-2 pr-2 pl-4 align-top',
+                    needsReview
+                      ? 'border-l-(--color-alert)'
+                      : 'border-l-transparent',
+                  )}
+                >
                   <input
                     aria-label={`Quantity for line ${index + 1}`}
-                    className={FIELD}
+                    className={CELL}
                     defaultValue={formatQuantity(row.quantity)}
                     onChange={(event) => {
                       const raw = event.target.value.trim()
@@ -72,20 +97,20 @@ export function IngredientReviewTable({
                     }}
                   />
                 </td>
-                <td className="w-24 align-top">
+                <td className="w-28 px-2 py-2 align-top">
                   <input
                     aria-label={`Unit for line ${index + 1}`}
-                    className={FIELD}
+                    className={CELL}
                     defaultValue={row.unit ?? ''}
                     onChange={(event) =>
                       update(index, { unit: event.target.value.trim() || null })
                     }
                   />
                 </td>
-                <td className="align-top">
+                <td className="px-2 py-2 align-top">
                   <input
                     aria-label={`Ingredient for line ${index + 1}`}
-                    className={FIELD}
+                    className={CELL}
                     defaultValue={row.ingredient}
                     onChange={(event) =>
                       update(index, { ingredient: event.target.value })
@@ -94,28 +119,28 @@ export function IngredientReviewTable({
                   {row.rawText !== '' && (
                     <p className="mt-1 flex items-center gap-1 truncate px-1 text-xs text-(--color-ink-muted)">
                       {needsReview && (
-                        <AlertTriangle className="size-3 shrink-0 text-amber-600" aria-hidden />
+                        <AlertTriangle className="size-3 shrink-0 text-(--color-alert)" aria-hidden />
                       )}
                       {row.rawText}
                     </p>
                   )}
                 </td>
-                <td className="w-40 align-top">
+                <td className="w-44 px-2 py-2 align-top">
                   <input
                     aria-label={`Note for line ${index + 1}`}
-                    className={FIELD}
+                    className={CELL}
                     defaultValue={row.note ?? ''}
                     onChange={(event) =>
                       update(index, { note: event.target.value.trim() || null })
                     }
                   />
                 </td>
-                <td className="w-10 align-top">
+                <td className="w-10 py-2 pr-2 align-top">
                   <button
                     type="button"
                     aria-label={`Remove line ${index + 1}`}
                     onClick={() => remove(index)}
-                    className="rounded-md p-2 text-(--color-ink-muted) hover:text-red-600"
+                    className="rounded-md p-2 text-(--color-ink-muted) transition-colors hover:text-(--color-alert)"
                   >
                     <Trash2 className="size-4" aria-hidden />
                   </button>
@@ -123,14 +148,15 @@ export function IngredientReviewTable({
               </tr>
             )
           })}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={addRow}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-border-subtle) px-3 py-2 text-sm font-medium"
+          className={button({ variant: 'secondary', size: 'sm' })}
         >
           <Plus className="size-4" aria-hidden />
           Add ingredient
@@ -141,7 +167,7 @@ export function IngredientReviewTable({
             type="button"
             disabled={cleaningUp}
             onClick={() => onCleanUp(lowIndexes)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-(--color-accent) px-3 py-2 text-sm font-medium text-(--color-accent-ink) disabled:opacity-60"
+            className={button({ size: 'sm' })}
           >
             <Sparkles className="size-4" aria-hidden />
             {cleaningUp

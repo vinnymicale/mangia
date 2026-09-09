@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { button, field } from '@/components/ui'
 import { cn, formatQuantity } from '@/lib/utils'
 
 export interface ShoppingItemView {
@@ -52,37 +53,63 @@ export function ShoppingListView({
 
   return (
     <div className="space-y-6">
-      <ul className="space-y-2">
-        {rows.map((row) => (
-          <li key={row.id}>
-            <label className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                className="mt-1 size-5 shrink-0"
-                checked={row.checked}
-                onChange={(event) => void toggle(row.id, event.target.checked)}
-              />
-              <span className={cn(row.checked && 'text-(--color-ink-muted) line-through')}>
-                <span className="font-medium">
-                  {[formatQuantity(row.quantity), row.unit].filter(Boolean).join(' ')}
-                </span>{' '}
-                {row.name}
-                {row.sourceTitles.length > 0 && (
-                  <span className="block text-xs text-(--color-ink-muted)">
-                    for {row.sourceTitles.join(', ')}
-                  </span>
+      <ul className="divide-y divide-(--color-border-subtle) rounded-2xl border border-(--color-border-subtle) bg-(--color-surface-raised)">
+        {rows.map((row, index) => {
+          // Items arrive grouped by recipe, so repeating the same source on
+          // every row is noise. Print it once, where the run starts.
+          const source = row.sourceTitles.join(', ')
+          const repeat =
+            source !== '' && source === rows[index - 1]?.sourceTitles.join(', ')
+          return (
+            <li key={row.id}>
+              {/* A full-width row: in a shop this is tapped one-handed. */}
+              <label
+                className={cn(
+                  'flex cursor-pointer items-baseline gap-3 px-5 py-3 transition-colors',
+                  row.checked && 'bg-(--color-surface-sunken)',
                 )}
-              </span>
-            </label>
-          </li>
-        ))}
+              >
+                <input
+                  type="checkbox"
+                  className="size-5 shrink-0 self-center"
+                  checked={row.checked}
+                  onChange={(event) =>
+                    void toggle(row.id, event.target.checked)
+                  }
+                />
+                {/* The source recipes sit out on the right: they answer "why is
+                  this on the list?", which is secondary to the item itself. */}
+                <span
+                  className={cn(
+                    'flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-6 gap-y-0.5 transition-colors',
+                    row.checked && 'text-(--color-ink-muted) line-through',
+                  )}
+                >
+                  <span>
+                    <span className="tnum font-medium">
+                      {[formatQuantity(row.quantity), row.unit]
+                        .filter(Boolean)
+                        .join(' ')}
+                    </span>{' '}
+                    {row.name}
+                  </span>
+                  {source !== '' && !repeat && (
+                    <span className="text-xs text-(--color-ink-muted)">
+                      for {source}
+                    </span>
+                  )}
+                </span>
+              </label>
+            </li>
+          )
+        })}
       </ul>
 
-      <div className="flex gap-2">
+      <div className="flex max-w-md gap-2">
         <input
           aria-label="Add an item"
           placeholder="Add an item"
-          className="min-w-0 flex-1 rounded-lg border border-(--color-border-subtle) bg-(--color-surface-raised) px-3 py-2"
+          className={cn(field, 'min-w-0 flex-1')}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -95,7 +122,7 @@ export function ShoppingListView({
         <button
           type="button"
           onClick={() => void add()}
-          className="rounded-lg border border-(--color-border-subtle) px-4 py-2 font-medium"
+          className={button({ variant: 'secondary' })}
         >
           Add
         </button>

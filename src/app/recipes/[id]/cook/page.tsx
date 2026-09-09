@@ -1,21 +1,9 @@
 import { notFound } from 'next/navigation'
 import { getRecipe } from '@/lib/db/recipes'
 import { CookingView } from '@/components/CookingView'
+import { toSteps } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
-
-/** Splits instructions on blank lines, falling back to single newlines. */
-function toSteps(instructions: string): string[] {
-  const paragraphs = instructions
-    .split(/\n\s*\n/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-  if (paragraphs.length > 1) return paragraphs
-  return instructions
-    .split('\n')
-    .map((part) => part.trim())
-    .filter(Boolean)
-}
 
 export default async function CookPage({
   params,

@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IngredientReviewTable } from './IngredientReviewTable'
 import { UnknownIngredientPrompt, type AliasChoice } from './UnknownIngredientPrompt'
+import { button, field, label as labelClass } from '@/components/ui'
+import { cn } from '@/lib/utils'
 import type { ParsedIngredient } from '@/lib/parsing/types'
 
 export interface RecipeFormValue {
@@ -24,9 +26,6 @@ export const EMPTY_RECIPE: RecipeFormValue = {
   prepMinutes: null, cookMinutes: null, sourceUrl: null,
   ingredients: [], tags: [],
 }
-
-const FIELD =
-  'w-full rounded-lg border border-(--color-border-subtle) bg-(--color-surface-raised) px-3 py-2 focus:border-(--color-accent) focus:outline-none'
 
 function toIntOrNull(raw: string): number | null {
   const value = Number.parseInt(raw, 10)
@@ -113,46 +112,46 @@ export function RecipeForm({ initial }: { initial: RecipeFormValue }) {
 
   return (
     <form
-      className="space-y-6"
+      className="space-y-7"
       onSubmit={(event) => {
         event.preventDefault()
         void save()
       }}
     >
-      <label className="block">
-        <span className="text-sm font-medium">Title</span>
+      <label className="block max-w-2xl">
+        <span className={labelClass}>Title</span>
         <input
           required
-          className={FIELD}
+          className={cn(field, 'mt-1.5')}
           value={value.title}
           onChange={(event) => patch({ title: event.target.value })}
         />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid max-w-xl gap-4 sm:grid-cols-3">
         <label className="block">
-          <span className="text-sm font-medium">Servings</span>
+          <span className={labelClass}>Servings</span>
           <input
             inputMode="numeric"
-            className={FIELD}
+            className={cn(field, 'mt-1.5')}
             defaultValue={value.servings ?? ''}
             onChange={(event) => patch({ servings: toIntOrNull(event.target.value) })}
           />
         </label>
         <label className="block">
-          <span className="text-sm font-medium">Prep (min)</span>
+          <span className={labelClass}>Prep (min)</span>
           <input
             inputMode="numeric"
-            className={FIELD}
+            className={cn(field, 'mt-1.5')}
             defaultValue={value.prepMinutes ?? ''}
             onChange={(event) => patch({ prepMinutes: toIntOrNull(event.target.value) })}
           />
         </label>
         <label className="block">
-          <span className="text-sm font-medium">Cook (min)</span>
+          <span className={labelClass}>Cook (min)</span>
           <input
             inputMode="numeric"
-            className={FIELD}
+            className={cn(field, 'mt-1.5')}
             defaultValue={value.cookMinutes ?? ''}
             onChange={(event) => patch({ cookMinutes: toIntOrNull(event.target.value) })}
           />
@@ -160,7 +159,7 @@ export function RecipeForm({ initial }: { initial: RecipeFormValue }) {
       </div>
 
       <fieldset>
-        <legend className="text-sm font-medium">Ingredients</legend>
+        <legend className={labelClass}>Ingredients</legend>
         <div className="mt-2">
           <IngredientReviewTable
             value={value.ingredients}
@@ -172,19 +171,19 @@ export function RecipeForm({ initial }: { initial: RecipeFormValue }) {
       </fieldset>
 
       <label className="block">
-        <span className="text-sm font-medium">Instructions</span>
+        <span className={labelClass}>Instructions</span>
         <textarea
           rows={10}
-          className={FIELD}
+          className={cn(field, 'mt-1.5')}
           value={value.instructions}
           onChange={(event) => patch({ instructions: event.target.value })}
         />
       </label>
 
       <label className="block">
-        <span className="text-sm font-medium">Tags</span>
+        <span className={labelClass}>Tags</span>
         <input
-          className={FIELD}
+          className={cn(field, 'mt-1.5')}
           placeholder="weeknight, pasta"
           defaultValue={value.tags.join(', ')}
           onChange={(event) =>
@@ -198,7 +197,10 @@ export function RecipeForm({ initial }: { initial: RecipeFormValue }) {
       <UnknownIngredientPrompt unknown={unknown} choices={aliases} onChange={setAliases} />
 
       {error && (
-        <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-700">
+        <p
+          role="alert"
+          className="rounded-lg bg-(--color-alert-soft) px-4 py-3 text-sm text-(--color-alert)"
+        >
           {error}
         </p>
       )}
@@ -206,7 +208,7 @@ export function RecipeForm({ initial }: { initial: RecipeFormValue }) {
       <button
         type="submit"
         disabled={saving || value.title.trim() === ''}
-        className="rounded-lg bg-(--color-accent) px-5 py-2.5 font-medium text-(--color-accent-ink) disabled:opacity-60"
+        className={button({ size: 'lg' })}
       >
         {saving ? 'Saving…' : unknown.length > 0 ? 'Confirm and save' : 'Save recipe'}
       </button>

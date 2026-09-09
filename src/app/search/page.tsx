@@ -2,6 +2,8 @@ import { db } from '@/lib/db/client'
 import { searchRecipes } from '@/lib/db/search'
 import { RecipeCard } from '@/components/RecipeCard'
 import { PantrySearch } from '@/components/PantrySearch'
+import { PageTitle, button, field } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,31 +26,30 @@ export default async function SearchPage({
     .filter((recipe): recipe is NonNullable<typeof recipe> => recipe !== undefined)
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-14">
       <section>
-        <h1 className="mb-4 text-2xl font-semibold">Search</h1>
-        <form action="/search" className="flex gap-2">
+        <PageTitle lede="Find a recipe by name, ingredient, or anything in the method.">
+          Search
+        </PageTitle>
+        <form action="/search" className="flex max-w-2xl gap-2">
           <input
             name="q"
             aria-label="Search recipes"
             placeholder="carbonara, braise, anything"
             defaultValue={query}
-            className="min-w-0 flex-1 rounded-lg border border-(--color-border-subtle) bg-(--color-surface-raised) px-3 py-2"
+            className={cn(field, 'min-w-0 flex-1')}
           />
-          <button
-            type="submit"
-            className="rounded-lg bg-(--color-accent) px-4 py-2 font-medium text-(--color-accent-ink)"
-          >
+          <button type="submit" className={button()}>
             Search
           </button>
         </form>
 
         {query !== '' && ranked.length === 0 && (
-          <p className="mt-4 text-(--color-ink-muted)">No recipes match “{query}”.</p>
+          <p className="mt-6 text-(--color-ink-muted)">No recipes match “{query}”.</p>
         )}
 
         {ranked.length > 0 && (
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+          <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {ranked.map((recipe) => (
               <li key={recipe.id}>
                 <RecipeCard {...recipe} />
@@ -57,8 +58,6 @@ export default async function SearchPage({
           </ul>
         )}
       </section>
-
-      <hr className="border-(--color-border-subtle)" />
 
       <PantrySearch />
     </div>

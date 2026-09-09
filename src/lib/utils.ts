@@ -32,9 +32,24 @@ export function safeExternalUrl(url: string | null | undefined): string | null {
   if (!url) return null
   try {
     const parsed = new URL(url)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? url : null
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+      ? url
+      : null
   } catch {
     // Relative or malformed values are never valid external sources.
     return null
   }
+}
+
+/** Splits recipe instructions on blank lines, falling back to single newlines. */
+export function toSteps(instructions: string): string[] {
+  const paragraphs = instructions
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  if (paragraphs.length > 1) return paragraphs
+  return instructions
+    .split('\n')
+    .map((part) => part.trim())
+    .filter(Boolean)
 }

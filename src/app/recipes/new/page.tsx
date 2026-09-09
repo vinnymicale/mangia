@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { RecipeForm, EMPTY_RECIPE, type RecipeFormValue } from '@/components/RecipeForm'
 import type { ParsedIngredient } from '@/lib/parsing/types'
 import type { RecipeDraft } from '@/lib/llm/types'
+import { PageTitle, button, card, field } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 type Door = 'choose' | 'form'
 
@@ -68,25 +70,27 @@ export default function NewRecipePage() {
   if (door === 'form') {
     return (
       <>
-        <h1 className="mb-6 text-2xl font-semibold">New recipe</h1>
+        <PageTitle>New recipe</PageTitle>
         <RecipeForm initial={initial} />
       </>
     )
   }
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">New recipe</h1>
+    <div>
+      <PageTitle lede="Three ways in. Pick whichever matches what you have in front of you.">
+        New recipe
+      </PageTitle>
 
-      <section className="rounded-xl border border-(--color-border-subtle) bg-(--color-surface-raised) p-4">
-        <h2 className="font-medium">Paste your ingredients</h2>
-        <p className="mt-1 text-sm text-(--color-ink-muted)">
+      <section className={cn(card, 'p-6')}>
+        <h2 className="text-xl font-semibold">Paste your ingredients</h2>
+        <p className="mt-1.5 text-sm text-(--color-ink-muted)">
           One per line. Parsed instantly — nothing leaves your server.
         </p>
         <textarea
           aria-label="Ingredient list"
           rows={6}
-          className="mt-3 w-full rounded-lg border border-(--color-border-subtle) bg-transparent px-3 py-2 font-mono text-sm"
+          className={cn(field, 'mt-4 font-mono text-sm')}
           value={blob}
           onChange={(event) => setBlob(event.target.value)}
         />
@@ -94,24 +98,24 @@ export default function NewRecipePage() {
           type="button"
           disabled={blob.trim() === ''}
           onClick={() => void pasteBlob()}
-          className="mt-3 rounded-lg bg-(--color-accent) px-4 py-2 font-medium text-(--color-accent-ink) disabled:opacity-60"
+          className={cn(button(), 'mt-4')}
         >
           Parse ingredients
         </button>
       </section>
 
-      <section className="rounded-xl border border-(--color-border-subtle) bg-(--color-surface-raised) p-4">
-        <h2 className="font-medium">Import from a link</h2>
-        <p className="mt-1 text-sm text-(--color-ink-muted)">
+      <section className={cn(card, 'mt-6 p-6')}>
+        <h2 className="text-xl font-semibold">Import from a link</h2>
+        <p className="mt-1.5 text-sm text-(--color-ink-muted)">
           Structured recipe data is used when the site publishes it; otherwise
           the page is read by your configured model.
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <input
             aria-label="Recipe URL"
             type="url"
             placeholder="https://…"
-            className="min-w-0 flex-1 rounded-lg border border-(--color-border-subtle) bg-transparent px-3 py-2"
+            className={cn(field, 'min-w-0 flex-1')}
             value={url}
             onChange={(event) => setUrl(event.target.value)}
           />
@@ -119,13 +123,13 @@ export default function NewRecipePage() {
             type="button"
             disabled={busy || url.trim() === ''}
             onClick={() => void importUrl()}
-            className="rounded-lg bg-(--color-accent) px-4 py-2 font-medium text-(--color-accent-ink) disabled:opacity-60"
+            className={button()}
           >
             {busy ? 'Importing…' : 'Import'}
           </button>
         </div>
         {error && (
-          <p role="alert" className="mt-3 text-sm text-red-700">
+          <p role="alert" className="mt-4 rounded-lg bg-(--color-alert-soft) px-4 py-3 text-sm text-(--color-alert)">
             {error}
           </p>
         )}
@@ -134,7 +138,7 @@ export default function NewRecipePage() {
       <button
         type="button"
         onClick={() => setDoor('form')}
-        className="text-sm font-medium text-(--color-ink-muted) underline"
+        className={cn(button({ variant: 'ghost' }), 'mt-6')}
       >
         Or type it out from scratch
       </button>

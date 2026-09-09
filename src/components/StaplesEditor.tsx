@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { X } from 'lucide-react'
+import { button, field } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 export interface StapleRow {
   id: string
@@ -39,18 +41,19 @@ export function StaplesEditor({ initial }: { initial: StapleRow[] }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <ul className="flex flex-wrap gap-2">
         {rows.map((row) => (
           <li
             key={row.id}
-            className="flex items-center gap-2 rounded-full border border-(--color-border-subtle) px-3 py-1"
+            className="flex items-center gap-2 rounded-full bg-(--color-accent-soft) py-1.5 pr-2 pl-3.5 text-sm text-(--color-accent)"
           >
             {row.name}
             <button
               type="button"
               aria-label={`Remove ${row.name}`}
               onClick={() => void remove(row.id)}
+              className="rounded-full transition-colors hover:text-(--color-alert)"
             >
               <X className="size-4" />
             </button>
@@ -62,7 +65,7 @@ export function StaplesEditor({ initial }: { initial: StapleRow[] }) {
         <input
           aria-label="Add a staple"
           placeholder="olive oil"
-          className="min-w-0 flex-1 rounded-lg border border-(--color-border-subtle) bg-(--color-surface-raised) px-3 py-2"
+          className={cn(field, 'min-w-0 flex-1')}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -75,7 +78,7 @@ export function StaplesEditor({ initial }: { initial: StapleRow[] }) {
         <button
           type="button"
           onClick={() => void add()}
-          className="rounded-lg border border-(--color-border-subtle) px-4 py-2 font-medium"
+          className={button({ variant: 'secondary' })}
         >
           Add
         </button>

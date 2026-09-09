@@ -1,6 +1,9 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { field } from '@/components/ui'
+import { Select } from '@/components/Select'
 
 const SORTS = [
   { value: 'recent', label: 'Recently added' },
@@ -21,43 +24,32 @@ export function BrowseControls({ tags }: { tags: string[] }) {
   }
 
   return (
-    <div className="mb-6 flex flex-wrap gap-3">
-      <label className="text-sm">
-        <span className="sr-only">Sort by</span>
-        <select
-          aria-label="Sort by"
-          className="rounded-lg border border-(--color-border-subtle) bg-(--color-surface-raised) px-3 py-2"
-          value={params.get('sort') ?? 'recent'}
-          onChange={(event) => setParam('sort', event.target.value)}
-        >
-          {SORTS.map((sort) => (
-            <option key={sort.value} value={sort.value}>{sort.label}</option>
-          ))}
-        </select>
-      </label>
+    <div className="mb-8 flex flex-wrap items-center gap-2.5">
+      <Select
+        label="Sort by"
+        options={SORTS}
+        value={params.get('sort') ?? 'recent'}
+        onChange={(value) => setParam('sort', value)}
+      />
 
-      <label className="text-sm">
-        <span className="sr-only">Filter by tag</span>
-        <select
-          aria-label="Filter by tag"
-          className="rounded-lg border border-(--color-border-subtle) bg-(--color-surface-raised) px-3 py-2"
-          value={params.get('tag') ?? ''}
-          onChange={(event) => setParam('tag', event.target.value)}
-        >
-          <option value="">All tags</option>
-          {tags.map((tag) => (
-            <option key={tag} value={tag}>{tag}</option>
-          ))}
-        </select>
-      </label>
+      <Select
+        label="Tag"
+        name="Filter by tag"
+        options={[
+          { value: '', label: 'All tags' },
+          ...tags.map((tag) => ({ value: tag, label: tag })),
+        ]}
+        value={params.get('tag') ?? ''}
+        onChange={(value) => setParam('tag', value)}
+      />
 
-      <label className="text-sm">
+      <label>
         <span className="sr-only">Maximum minutes</span>
         <input
           aria-label="Maximum minutes"
           inputMode="numeric"
           placeholder="Max minutes"
-          className="w-32 rounded-lg border border-(--color-border-subtle) bg-(--color-surface-raised) px-3 py-2"
+          className={cn(field, 'w-32 py-2 text-sm')}
           defaultValue={params.get('maxMinutes') ?? ''}
           onBlur={(event) => setParam('maxMinutes', event.target.value.trim())}
         />

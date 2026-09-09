@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getShoppingList } from '@/lib/db/shoppingList'
 import { ShoppingListView } from '@/components/ShoppingListView'
+import { PageTitle } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,9 +14,13 @@ export default async function ListPage({
   const list = await getShoppingList(id)
   if (list === null) notFound()
 
+  // A checklist reads better in a narrow column than stretched across the
+  // full shell width, where each row would be a checkbox and a lot of nothing.
   return (
-    <>
-      <h1 className="mb-6 text-2xl font-semibold">{list.name}</h1>
+    <div className="max-w-3xl">
+      <PageTitle count={`${list.items.length} ${list.items.length === 1 ? 'item' : 'items'}`}>
+        {list.name}
+      </PageTitle>
       <ShoppingListView
         listId={list.id}
         items={list.items.map((item) => ({
@@ -28,6 +33,6 @@ export default async function ListPage({
           sourceTitles: item.sources.map((source) => source.recipe.title),
         }))}
       />
-    </>
+    </div>
   )
 }

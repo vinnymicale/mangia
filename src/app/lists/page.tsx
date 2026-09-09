@@ -1,7 +1,10 @@
 import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { listShoppingLists } from '@/lib/db/shoppingList'
 import { listRecipes } from '@/lib/db/recipes'
 import { RecipePicker } from '@/components/RecipePicker'
+import { card, PageTitle } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,25 +15,32 @@ export default async function ListsPage() {
   ])
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-12">
       <section>
-        <h1 className="mb-4 text-2xl font-semibold">Shopping lists</h1>
+        <PageTitle>Shopping lists</PageTitle>
         {lists.length === 0 ? (
-          <p className="text-(--color-ink-muted)">No lists yet.</p>
+          <p className="text-(--color-ink-muted)">
+            No lists yet. Pick a few recipes below to build one.
+          </p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-2.5">
             {lists.map((list) => (
               <li key={list.id}>
-                <Link href={`/lists/${list.id}`} className="underline">
+                <Link
+                  href={`/lists/${list.id}`}
+                  className={cn(
+                    card,
+                    'flex items-center justify-between gap-3 px-5 py-4 font-medium transition-colors hover:border-(--color-accent)/40 hover:text-(--color-accent)',
+                  )}
+                >
                   {list.name}
+                  <ChevronRight className="size-4 shrink-0 text-(--color-ink-muted)" aria-hidden />
                 </Link>
               </li>
             ))}
           </ul>
         )}
       </section>
-
-      <hr className="border-(--color-border-subtle)" />
 
       <RecipePicker recipes={recipes.map(({ id, title }) => ({ id, title }))} />
     </div>

@@ -3,6 +3,8 @@ import { db } from '@/lib/db/client'
 import { listRecipes, type RecipeSort } from '@/lib/db/recipes'
 import { BrowseControls } from '@/components/BrowseControls'
 import { RecipeCard } from '@/components/RecipeCard'
+import { button, card, PageTitle } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,15 +33,12 @@ export default async function HomePage({
 
   if (recipes.length === 0 && !tag && !maxMinutes) {
     return (
-      <div className="py-20 text-center">
+      <div className={cn(card, 'mx-auto max-w-md px-6 py-14 text-center')}>
         <h1 className="text-2xl font-semibold">No recipes yet</h1>
-        <p className="mt-2 text-(--color-ink-muted)">
+        <p className="mx-auto mt-2 max-w-xs text-(--color-ink-muted)">
           Paste one in, import from a link, or type it out.
         </p>
-        <Link
-          href="/recipes/new"
-          className="mt-6 inline-block rounded-lg bg-(--color-accent) px-5 py-2.5 font-medium text-(--color-accent-ink)"
-        >
+        <Link href="/recipes/new" className={cn(button({ size: 'lg' }), 'mt-7')}>
           Add your first recipe
         </Link>
       </div>
@@ -48,12 +47,14 @@ export default async function HomePage({
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold">Recipes</h1>
+      <PageTitle count={`${recipes.length} ${recipes.length === 1 ? 'recipe' : 'recipes'}`}>
+        Recipes
+      </PageTitle>
       <BrowseControls tags={tagRows.map((row) => row.name)} />
       {recipes.length === 0 ? (
         <p className="text-(--color-ink-muted)">Nothing matches those filters.</p>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {recipes.map((recipe) => (
             <li key={recipe.id}>
               <RecipeCard {...recipe} />
