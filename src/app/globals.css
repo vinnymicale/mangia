@@ -1,29 +1,36 @@
 @import 'tailwindcss';
 
+/*
+ * One token system, named as in the design mockup. `@theme` publishes each
+ * name to Tailwind's utility layer as well, so `bg-surface` and
+ * `text-(--ink-2)` address the same variable.
+ */
 @theme {
   /* Kitchen palette: bone paper, olive ink, basil for actions. Warm red is
    * reserved for destructive and alert states so it always means "stop". */
-  --color-surface: oklch(0.97 0.008 95);
-  --color-surface-raised: oklch(0.995 0.005 95);
-  --color-surface-sunken: oklch(0.94 0.01 95);
-  --color-border-subtle: oklch(0.88 0.012 95);
-  --color-border-strong: oklch(0.78 0.018 95);
-  --color-ink: oklch(0.31 0.035 130);
-  --color-ink-muted: oklch(0.52 0.018 110);
-  --color-accent: oklch(0.48 0.085 135);
-  --color-accent-hover: oklch(0.42 0.09 135);
-  --color-accent-soft: oklch(0.93 0.03 135);
-  --color-accent-ink: oklch(0.99 0.005 95);
-  --color-alert: oklch(0.52 0.16 32);
-  --color-alert-soft: oklch(0.94 0.035 40);
+  --color-bg: #eaeae0;
+  --color-surface: #f3f2ee;
+  --color-surface-hi: #fdfcfa;
+  --color-accent: #2d5e39;
+  --color-accent-h: #225030;
+  --color-accent-soft: #e3eee5;
+  --color-accent-ink: #f9fdf9;
+  --color-ink: #1b2a1d;
+  --color-ink-2: #697a6c;
+  --color-border: #d0cbc2;
+  --color-border-hi: #b4afa6;
+  --color-alert: #8b3226;
+  --color-alert-soft: #fbeae7;
 
   --font-sans: var(--font-ui), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-serif: var(--font-display), ui-serif, Georgia, 'Times New Roman', serif;
 
+  --nav-h: 58px;
+
   /* Layered rather than a single blur, so raised surfaces read as paper
    * lifted off paper instead of a uniform grey haze. */
-  --shadow-card: 0 1px 2px oklch(0.31 0.035 130 / 0.06), 0 4px 12px oklch(0.31 0.035 130 / 0.05);
-  --shadow-card-hover: 0 2px 4px oklch(0.31 0.035 130 / 0.08), 0 10px 28px oklch(0.31 0.035 130 / 0.09);
+  --shadow-card: 0 1px 3px rgb(27 42 29 / 0.06), 0 4px 18px rgb(27 42 29 / 0.07);
+  --shadow-card-hover: 0 2px 6px rgb(27 42 29 / 0.08), 0 8px 30px rgb(27 42 29 / 0.13);
 }
 
 /*
@@ -32,22 +39,22 @@
  */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-surface: oklch(0.19 0.014 130);
-    --color-surface-raised: oklch(0.235 0.016 130);
-    --color-surface-sunken: oklch(0.155 0.012 130);
-    --color-border-subtle: oklch(0.32 0.016 130);
-    --color-border-strong: oklch(0.42 0.02 130);
-    --color-ink: oklch(0.95 0.012 95);
-    --color-ink-muted: oklch(0.73 0.016 105);
-    --color-accent: oklch(0.74 0.11 135);
-    --color-accent-hover: oklch(0.82 0.12 135);
-    --color-accent-soft: oklch(0.3 0.045 135);
-    --color-accent-ink: oklch(0.17 0.02 130);
-    --color-alert: oklch(0.72 0.13 38);
-    --color-alert-soft: oklch(0.3 0.05 35);
+    --color-bg: #171c16;
+    --color-surface: #1e231d;
+    --color-surface-hi: #262d25;
+    --color-accent: #5a9e67;
+    --color-accent-h: #6ab878;
+    --color-accent-soft: #1b3121;
+    --color-accent-ink: #0d160d;
+    --color-ink: #dde8de;
+    --color-ink-2: #8ca08e;
+    --color-border: #2b342c;
+    --color-border-hi: #3a463b;
+    --color-alert: #c0604e;
+    --color-alert-soft: #2a1612;
 
-    --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3), 0 4px 12px oklch(0 0 0 / 0.28);
-    --shadow-card-hover: 0 2px 4px oklch(0 0 0 / 0.36), 0 10px 28px oklch(0 0 0 / 0.4);
+    --shadow-card: 0 1px 3px rgb(0 0 0 / 0.22), 0 4px 18px rgb(0 0 0 / 0.28);
+    --shadow-card-hover: 0 2px 6px rgb(0 0 0 / 0.3), 0 8px 30px rgb(0 0 0 / 0.38);
   }
 }
 
@@ -56,21 +63,31 @@ html {
 }
 
 html, body {
-  background: var(--color-surface);
+  background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Recipe titles and section headings carry the cookbook voice. */
+/* Recipe titles and section headings carry the cookbook voice. The mockup
+ * sets them in italic Fraunces — that slant is the app's signature. */
 h1, h2, .display {
   font-family: var(--font-serif);
   font-optical-sizing: auto;
-  letter-spacing: -0.011em;
+  letter-spacing: -0.025em;
 }
 
 /* Quantities line up in a column when they share a figure width. */
 .tnum { font-variant-numeric: tabular-nums; }
+
+/* The small caps label that opens a column or a grouped section. */
+.eyebrow {
+  font-size: 0.656rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+}
 
 /* One consistent focus ring across every interactive element. */
 :focus-visible {

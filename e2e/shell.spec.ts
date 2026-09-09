@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test'
 // database, so "no recipes exist" is not a condition this suite can guarantee.
 test('navigates to the add-recipe page', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Add', exact: true }).click()
+  await page.getByRole('link', { name: '+ Add Recipe' }).click()
   await expect(page).toHaveURL(/\/recipes\/new/)
 })
 
@@ -13,4 +13,6 @@ test('main navigation is present', async ({ page }) => {
   const nav = page.getByRole('navigation', { name: 'Main' })
   await expect(nav.getByRole('link', { name: 'Recipes' })).toBeVisible()
   await expect(nav.getByRole('link', { name: 'Lists' })).toBeVisible()
+  // Pantry search is its own destination, not a second box on /search.
+  await expect(nav.getByRole('link', { name: 'Pantry' })).toBeVisible()
 })

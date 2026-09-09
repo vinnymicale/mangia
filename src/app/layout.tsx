@@ -1,16 +1,16 @@
 import type { Metadata } from 'next'
-import { Fraunces, Inter_Tight } from 'next/font/google'
+import { DM_Sans, Fraunces } from 'next/font/google'
 import { Nav } from '@/components/Nav'
 import './globals.css'
 
-// Fraunces carries the cookbook voice; Inter Tight keeps the chrome quiet.
+// Fraunces carries the cookbook voice; DM Sans keeps the chrome quiet.
 const display = Fraunces({
   subsets: ['latin'],
   variable: '--font-display',
   axes: ['SOFT', 'WONK'],
 })
 
-const ui = Inter_Tight({
+const ui = DM_Sans({
   subsets: ['latin'],
   variable: '--font-ui',
 })
@@ -29,7 +29,7 @@ export default function RootLayout({
     <html lang="en" className={`${display.variable} ${ui.variable}`}>
       <body className="flex min-h-dvh flex-col">
         <Nav />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 sm:px-6 sm:py-12">
+        <main className="mx-auto w-full max-w-[1120px] flex-1 px-5 pt-8 pb-16 sm:px-7 sm:pt-9 sm:pb-18">
           {children}
         </main>
       </body>

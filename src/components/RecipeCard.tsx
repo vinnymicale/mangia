@@ -46,30 +46,16 @@ export function RecipeCard({
   return (
     <Link
       href={`/recipes/${id}`}
-      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-(--color-border-subtle) bg-(--color-surface-raised) p-5 shadow-(--shadow-card) transition-[box-shadow,border-color,transform] hover:-translate-y-0.5 hover:border-(--color-accent)/40 hover:shadow-(--shadow-card-hover)"
+      className="group flex h-full flex-col gap-[9px] rounded-[11px] border border-(--color-border) bg-(--color-surface) px-[22px] pt-5 pb-[18px] shadow-(--shadow-card) transition-[box-shadow,border-color,transform] hover:-translate-y-0.5 hover:border-(--color-border-hi) hover:shadow-(--shadow-card-hover)"
     >
-      {/* The olive edge is the app's structural motif, reading as a bookmark. */}
-      <span
-        aria-hidden
-        className="absolute inset-y-0 left-0 w-1 bg-(--color-accent) opacity-0 transition-opacity group-hover:opacity-100"
-      />
-
-      <h2 className="font-serif text-xl leading-snug font-semibold text-balance">
-        {title}
-      </h2>
-
-      {description && (
-        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-(--color-ink-muted)">
-          {description}
-        </p>
-      )}
-
+      {/* Tags lead the card: they orient a scan of the grid before the
+          title is read, and keep every title on the same baseline. */}
       {shown.length > 0 && (
-        <ul className="mt-3 flex flex-wrap gap-1.5">
+        <ul className="flex flex-wrap gap-1.5">
           {shown.map((link) => (
             <li
               key={link.tag.id}
-              className="rounded-full bg-(--color-accent-soft) px-2.5 py-0.5 text-xs text-(--color-accent)"
+              className="rounded-[4px] bg-(--color-accent-soft) px-1.5 py-0.5 text-[10px] font-bold tracking-[0.07em] uppercase text-(--color-accent)"
             >
               {link.tag.name}
             </li>
@@ -77,27 +63,22 @@ export function RecipeCard({
         </ul>
       )}
 
-      {/* The meta row is pinned to the bottom so cards in a row align on it
-          however much description each one carries. */}
-      <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-4 text-sm text-(--color-ink-muted)">
-        <span className="flex items-center gap-1.5">
-          {hasTime && <Clock className="size-3.5 shrink-0" aria-hidden />}
-          <span className="tnum">{subtitle ?? formatMinutes(total)}</span>
-        </span>
-        {subtitle === undefined && servings != null && (
-          <span className="flex items-center gap-1.5">
-            <Users className="size-3.5 shrink-0" aria-hidden />
-            <span className="tnum">Serves {servings}</span>
-          </span>
-        )}
-      </div>
+      <h2 className="flex-1 font-serif text-[18.5px] leading-[1.2] font-bold tracking-[-0.01em] text-balance italic">
+        {title}
+      </h2>
+
+      {description && (
+        <p className="line-clamp-2 text-[13px] leading-[1.55] text-(--color-ink-2)">
+          {description}
+        </p>
+      )}
 
       {/* The bar sits with the ratio it measures, so a grid of results can be
           scanned by length rather than by reading each fraction. */}
       {coverage !== undefined && (
         <div
           aria-hidden
-          className="mt-2 h-1 overflow-hidden rounded-full bg-(--color-surface-sunken)"
+          className="h-1 overflow-hidden rounded-full bg-(--color-border)"
         >
           <div
             className="h-full rounded-full bg-(--color-accent)"
@@ -106,8 +87,25 @@ export function RecipeCard({
         </div>
       )}
 
+      {/* The meta row is pinned to the bottom so cards in a row align on it
+          however much description each one carries. */}
+      <div className="mt-auto flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-(--color-border) pt-[11px] text-xs text-(--color-ink-2)">
+        <span className="flex items-center gap-1.5">
+          {hasTime && (
+            <Clock className="size-3 shrink-0 opacity-65" aria-hidden />
+          )}
+          <span className="tnum">{subtitle ?? formatMinutes(total)}</span>
+        </span>
+        {subtitle === undefined && servings != null && (
+          <span className="flex items-center gap-1.5">
+            <Users className="size-3 shrink-0 opacity-65" aria-hidden />
+            <span className="tnum">Serves {servings}</span>
+          </span>
+        )}
+      </div>
+
       {footnote && (
-        <p className="pt-3 text-sm text-(--color-ink-muted)">{footnote}</p>
+        <p className="text-xs text-(--color-ink-2)">{footnote}</p>
       )}
     </Link>
   )

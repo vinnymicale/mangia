@@ -42,12 +42,12 @@ export function RecipePicker({ recipes }: { recipes: PickableRecipe[] }) {
 
   return (
     <section>
-      <h2 className="text-2xl font-semibold">Build a list</h2>
-      <p className="mt-1.5 text-sm text-(--color-ink-muted)">
+      <h2 className="text-2xl font-bold">Build a list</h2>
+      <p className="mt-1.5 text-sm text-(--color-ink-2)">
         Choose the recipes you are cooking and mangia merges their ingredients.
       </p>
 
-      <ul className={cn(card, 'mt-5 divide-y divide-(--color-border-subtle) overflow-hidden')}>
+      <ul className={cn(card, 'mt-5 divide-y divide-(--color-border) overflow-hidden')}>
         {recipes.map((recipe) => (
           <li key={recipe.id}>
             <label

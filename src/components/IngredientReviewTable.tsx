@@ -15,9 +15,9 @@ export interface IngredientReviewTableProps {
 
 /** Compact variant of the shared field, sized for a dense grid of cells. */
 const CELL = cn(
-  'w-full rounded-md border border-(--color-border-subtle) bg-(--color-surface-raised)',
+  'w-full rounded-md border border-(--color-border) bg-(--color-surface)',
   'px-2 py-1.5 text-sm transition-colors',
-  'hover:border-(--color-border-strong) focus:border-(--color-accent) focus:outline-none',
+  'hover:border-(--color-border-hi) focus:border-(--color-accent) focus:outline-none',
 )
 
 export function IngredientReviewTable({
@@ -50,10 +50,10 @@ export function IngredientReviewTable({
     <div className="space-y-3">
       {/* One bordered surface rather than floating rows: this is a table the
           cook proofreads top to bottom, and the columns need naming. */}
-      <div className="overflow-hidden rounded-2xl border border-(--color-border-subtle) bg-(--color-surface-raised)">
+      <div className="overflow-hidden rounded-[11px] border border-(--color-border) bg-(--color-surface)">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-(--color-border-subtle) text-left text-xs text-(--color-ink-muted)">
+            <tr className="border-b border-(--color-border) text-left text-xs text-(--color-ink-2)">
               <th className="border-l-2 border-l-transparent py-2 pr-2 pl-4 font-medium">
                 Quantity
               </th>
@@ -65,7 +65,7 @@ export function IngredientReviewTable({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-(--color-border-subtle)">
+          <tbody className="divide-y divide-(--color-border)">
           {value.map((row, index) => {
             const needsReview = isLowConfidence(row)
             return (
@@ -117,7 +117,7 @@ export function IngredientReviewTable({
                     }
                   />
                   {row.rawText !== '' && (
-                    <p className="mt-1 flex items-center gap-1 truncate px-1 text-xs text-(--color-ink-muted)">
+                    <p className="mt-1 flex items-center gap-1 truncate px-1 text-xs text-(--color-ink-2)">
                       {needsReview && (
                         <AlertTriangle className="size-3 shrink-0 text-(--color-alert)" aria-hidden />
                       )}
@@ -140,7 +140,7 @@ export function IngredientReviewTable({
                     type="button"
                     aria-label={`Remove line ${index + 1}`}
                     onClick={() => remove(index)}
-                    className="rounded-md p-2 text-(--color-ink-muted) transition-colors hover:text-(--color-alert)"
+                    className="rounded-md p-2 text-(--color-ink-2) transition-colors hover:text-(--color-alert)"
                   >
                     <Trash2 className="size-4" aria-hidden />
                   </button>

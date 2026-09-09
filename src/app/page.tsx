@@ -34,8 +34,8 @@ export default async function HomePage({
   if (recipes.length === 0 && !tag && !maxMinutes) {
     return (
       <div className={cn(card, 'mx-auto max-w-md px-6 py-14 text-center')}>
-        <h1 className="text-2xl font-semibold">No recipes yet</h1>
-        <p className="mx-auto mt-2 max-w-xs text-(--color-ink-muted)">
+        <h1 className="text-2xl font-bold">No recipes yet</h1>
+        <p className="mx-auto mt-2 max-w-xs text-(--color-ink-2)">
           Paste one in, import from a link, or type it out.
         </p>
         <Link href="/recipes/new" className={cn(button({ size: 'lg' }), 'mt-7')}>
@@ -52,7 +52,7 @@ export default async function HomePage({
       </PageTitle>
       <BrowseControls tags={tagRows.map((row) => row.name)} />
       {recipes.length === 0 ? (
-        <p className="text-(--color-ink-muted)">Nothing matches those filters.</p>
+        <p className="text-(--color-ink-2)">Nothing matches those filters.</p>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {recipes.map((recipe) => (

@@ -55,7 +55,7 @@ test('full-text search finds a recipe by title', async ({ page, request }) => {
 test('ingredients-on-hand search shows coverage and misses', async ({ page, request }) => {
   const id = `hand-${Date.now()}`
   await seed(request, id)
-  await page.goto('/search')
+  await page.goto('/pantry')
   await page.getByLabel('Ingredients on hand').fill('eggs, spaghetti')
   await page.getByRole('button', { name: 'What can I make?' }).click()
   await expect(page.getByRole('heading', { name: `Carbonara ${id}` })).toBeVisible()

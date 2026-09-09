@@ -75,19 +75,19 @@ export function Select({
         aria-expanded={open}
         onClick={() => setOpen((prior) => !prior)}
         className={cn(
-          'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors',
-          'bg-(--color-surface-raised) text-(--color-ink)',
+          'flex items-center gap-2 rounded-[7px] border px-3.5 py-2 text-[13px] transition-colors',
+          'bg-(--color-surface) text-(--color-ink)',
           open
             ? 'border-(--color-accent)'
-            : 'border-(--color-border-subtle) hover:border-(--color-border-strong)',
+            : 'border-(--color-border) hover:border-(--color-border-hi)',
         )}
       >
-        <span className="text-(--color-ink-muted)">{label}</span>
+        <span className="text-(--color-ink-2)">{label}</span>
         <span className="font-medium">{current?.label}</span>
         <ChevronDown
           aria-hidden
           className={cn(
-            'size-3.5 text-(--color-ink-muted) transition-transform',
+            'size-3.5 text-(--color-ink-2) transition-transform',
             open && 'rotate-180',
           )}
         />
@@ -96,7 +96,7 @@ export function Select({
       {open && (
         <ul
           role="listbox"
-          className="absolute top-full left-0 z-30 mt-1.5 min-w-full overflow-hidden rounded-xl border border-(--color-border-subtle) bg-(--color-surface-raised) py-1 shadow-(--shadow-card-hover)"
+          className="absolute top-full left-0 z-30 mt-1.5 min-w-full overflow-hidden rounded-[9px] border border-(--color-border) bg-(--color-surface) py-1 shadow-(--shadow-card-hover)"
         >
           {options.map((option) => {
             const selected = option.value === value
@@ -114,7 +114,7 @@ export function Select({
                     'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm whitespace-nowrap transition-colors',
                     selected
                       ? 'text-(--color-accent)'
-                      : 'text-(--color-ink) hover:bg-(--color-surface-sunken)',
+                      : 'text-(--color-ink) hover:bg-(--color-surface-hi)',
                   )}
                 >
                   <Check

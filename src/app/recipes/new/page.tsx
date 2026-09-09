@@ -83,8 +83,8 @@ export default function NewRecipePage() {
       </PageTitle>
 
       <section className={cn(card, 'p-6')}>
-        <h2 className="text-xl font-semibold">Paste your ingredients</h2>
-        <p className="mt-1.5 text-sm text-(--color-ink-muted)">
+        <h2 className="text-xl font-bold">Paste your ingredients</h2>
+        <p className="mt-1.5 text-sm text-(--color-ink-2)">
           One per line. Parsed instantly — nothing leaves your server.
         </p>
         <textarea
@@ -105,8 +105,8 @@ export default function NewRecipePage() {
       </section>
 
       <section className={cn(card, 'mt-6 p-6')}>
-        <h2 className="text-xl font-semibold">Import from a link</h2>
-        <p className="mt-1.5 text-sm text-(--color-ink-muted)">
+        <h2 className="text-xl font-bold">Import from a link</h2>
+        <p className="mt-1.5 text-sm text-(--color-ink-2)">
           Structured recipe data is used when the site publishes it; otherwise
           the page is read by your configured model.
         </p>

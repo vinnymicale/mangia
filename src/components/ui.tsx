@@ -7,20 +7,19 @@ import { cn } from '@/lib/utils'
  */
 
 export const button = cva(
-  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55',
+  'inline-flex items-center justify-center gap-2 rounded-[7px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-55',
   {
     variants: {
       variant: {
-        primary:
-          'bg-(--color-accent) text-(--color-accent-ink) hover:bg-(--color-accent-hover) shadow-(--shadow-card)',
+        primary: 'bg-(--color-accent) text-(--color-accent-ink) hover:bg-(--color-accent-h)',
         secondary:
-          'border border-(--color-border-strong) bg-(--color-surface-raised) text-(--color-ink) hover:border-(--color-accent) hover:text-(--color-accent)',
+          'border border-(--color-border-hi) text-(--color-ink) hover:border-(--color-ink) hover:bg-(--color-surface-hi)',
         ghost:
-          'text-(--color-ink-muted) hover:bg-(--color-surface-sunken) hover:text-(--color-ink)',
+          'text-(--color-ink-2) hover:bg-(--color-surface-hi) hover:text-(--color-ink)',
       },
       size: {
-        sm: 'px-3 py-1.5 text-sm',
-        md: 'px-4 py-2.5 text-sm',
+        sm: 'px-3.5 py-1.5 text-[13px]',
+        md: 'px-5 py-2.5 text-sm',
         lg: 'px-6 py-3 text-base',
       },
     },
@@ -32,23 +31,24 @@ export type ButtonVariants = VariantProps<typeof button>
 
 /** Text inputs, selects, and textareas. */
 export const field = cn(
-  'w-full rounded-lg border border-(--color-border-subtle) bg-(--color-surface-raised) px-3 py-2.5',
-  'text-(--color-ink) placeholder:text-(--color-ink-muted)/70',
-  'transition-colors hover:border-(--color-border-strong)',
-  'focus:border-(--color-accent) focus:outline-none',
+  'w-full rounded-[7px] border border-(--color-border) bg-(--color-surface) px-3.5 py-2.5',
+  'text-(--color-ink) placeholder:text-(--color-ink-2)/70',
+  'transition-[color,background-color,border-color,box-shadow] hover:border-(--color-border-hi)',
+  // The soft ring reads as focus without the jump a heavier outline causes.
+  'focus:border-(--color-accent) focus:ring-[3px] focus:ring-(--color-accent-soft) focus:outline-none',
 )
 
 /** A raised panel: recipe cards, entry doors, prompts. */
 export const card = cn(
-  'rounded-2xl border border-(--color-border-subtle) bg-(--color-surface-raised) shadow-(--shadow-card)',
+  'rounded-[11px] border border-(--color-border) bg-(--color-surface) shadow-(--shadow-card)',
 )
 
 /** The small caps-free label above a grouped control. */
 export const label = 'text-sm font-medium text-(--color-ink)'
 
 /**
- * Page heading with the olive rule that acts as the app's structural motif.
- * `count` renders as a quiet tally beside the title when supplied.
+ * Page heading. `count` renders as a quiet tally beside the title when
+ * supplied — the mockup sets the two on one baseline rather than stacked.
  */
 export function PageTitle({
   children,
@@ -62,25 +62,15 @@ export function PageTitle({
   action?: React.ReactNode
 }) {
   return (
-    <header className="mb-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            {children}
-          </h1>
-          {count && (
-            <p className="mt-1.5 text-sm text-(--color-ink-muted)">{count}</p>
-          )}
+    <header className="mb-7">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-baseline gap-3">
+          <h1 className="text-3xl font-bold tracking-[-0.025em]">{children}</h1>
+          {count && <p className="text-sm text-(--color-ink-2)">{count}</p>}
         </div>
         {action}
       </div>
-      {lede && (
-        <p className="mt-3 max-w-prose text-(--color-ink-muted)">{lede}</p>
-      )}
-      <div
-        aria-hidden
-        className="mt-5 h-px w-full bg-linear-to-r from-(--color-accent)/50 to-transparent"
-      />
+      {lede && <p className="mt-3 max-w-prose text-(--color-ink-2)">{lede}</p>}
     </header>
   )
 }

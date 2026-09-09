@@ -19,7 +19,7 @@ export default async function ListsPage() {
       <section>
         <PageTitle>Shopping lists</PageTitle>
         {lists.length === 0 ? (
-          <p className="text-(--color-ink-muted)">
+          <p className="text-(--color-ink-2)">
             No lists yet. Pick a few recipes below to build one.
           </p>
         ) : (
@@ -34,7 +34,7 @@ export default async function ListsPage() {
                   )}
                 >
                   {list.name}
-                  <ChevronRight className="size-4 shrink-0 text-(--color-ink-muted)" aria-hidden />
+                  <ChevronRight className="size-4 shrink-0 text-(--color-ink-2)" aria-hidden />
                 </Link>
               </li>
             ))}

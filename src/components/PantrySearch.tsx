@@ -32,8 +32,7 @@ export function PantrySearch() {
 
   return (
     <section>
-      <h2 className="text-2xl font-semibold">Cook from the pantry</h2>
-      <label className="mt-4 block max-w-2xl">
+      <label className="block max-w-2xl">
         <span className={labelClass}>What do you have?</span>
         <textarea
           aria-label="Ingredients on hand"
@@ -54,7 +53,7 @@ export function PantrySearch() {
       </button>
 
       {matches !== null && matches.length === 0 && (
-        <p className="mt-6 text-(--color-ink-muted)">
+        <p className="mt-6 text-(--color-ink-2)">
           Nothing comes close with those ingredients.
         </p>
       )}

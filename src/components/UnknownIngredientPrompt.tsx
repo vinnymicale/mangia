@@ -33,8 +33,8 @@ export function UnknownIngredientPrompt({
 
   return (
     <section className={cn(card, 'border-(--color-accent)/30 bg-(--color-accent-soft)/40 p-5')}>
-      <h2 className="text-lg font-semibold">New to your library</h2>
-      <p className="mt-1.5 max-w-prose text-sm text-(--color-ink-muted)">
+      <h2 className="text-lg font-bold">New to your library</h2>
+      <p className="mt-1.5 max-w-prose text-sm text-(--color-ink-2)">
         These will be added as new ingredients. If one is another name for
         something you already have, say so and they will match in future searches.
       </p>
@@ -46,7 +46,7 @@ export function UnknownIngredientPrompt({
               <span className="sr-only">Same as, for {name}</span>
               <input
                 placeholder="same as… (optional)"
-                className="w-full rounded-md border border-(--color-border-subtle) bg-(--color-surface-raised) px-2 py-1.5 text-sm transition-colors hover:border-(--color-border-strong) focus:border-(--color-accent) focus:outline-none"
+                className="w-full rounded-md border border-(--color-border) bg-(--color-surface) px-2 py-1.5 text-sm transition-colors hover:border-(--color-border-hi) focus:border-(--color-accent) focus:outline-none"
                 onChange={(event) => setCanonical(name, event.target.value)}
               />
             </label>

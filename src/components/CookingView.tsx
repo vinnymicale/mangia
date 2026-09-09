@@ -66,7 +66,7 @@ export function CookingView({ title, ingredients, steps }: CookingViewProps) {
       <h1 className="text-4xl leading-tight font-semibold text-balance">{title}</h1>
 
       <section>
-        <h2 className="mb-5 text-2xl font-semibold">Ingredients</h2>
+        <h2 className="mb-5 text-2xl font-bold">Ingredients</h2>
         <ul className="space-y-4">
           {ingredients.map((row) => {
             const key = `ingredient:${row.id}`
@@ -80,12 +80,12 @@ export function CookingView({ title, ingredients, steps }: CookingViewProps) {
                     onChange={() => toggle(key)}
                     className="mt-2 size-6 shrink-0"
                   />
-                  <span className={cn('transition-colors', checked && 'text-(--color-ink-muted) line-through')}>
+                  <span className={cn('transition-colors', checked && 'text-(--color-ink-2) line-through')}>
                     <span className="tnum font-medium text-(--color-accent)">
                       {[formatQuantity(row.quantity), row.unit].filter(Boolean).join(' ')}
                     </span>{' '}
                     {row.name}
-                    {row.note && <span className="text-(--color-ink-muted)">, {row.note}</span>}
+                    {row.note && <span className="text-(--color-ink-2)">, {row.note}</span>}
                   </span>
                 </label>
               </li>
@@ -95,7 +95,7 @@ export function CookingView({ title, ingredients, steps }: CookingViewProps) {
       </section>
 
       <section>
-        <h2 className="mb-5 text-2xl font-semibold">Steps</h2>
+        <h2 className="mb-5 text-2xl font-bold">Steps</h2>
         <ol className="space-y-6">
           {steps.map((step, index) => {
             const key = `step:${index}`
@@ -104,10 +104,10 @@ export function CookingView({ title, ingredients, steps }: CookingViewProps) {
               <li
                 key={key}
                 className={cn(
-                  'rounded-xl border p-4 transition-colors sm:p-5',
+                  'rounded-[11px] border p-4 transition-colors sm:p-5',
                   checked
-                    ? 'border-transparent bg-(--color-surface-sunken)'
-                    : 'border-(--color-border-subtle) bg-(--color-surface-raised)',
+                    ? 'border-transparent bg-(--color-accent-soft)'
+                    : 'border-(--color-border) bg-(--color-surface)',
                 )}
               >
                 <label className="flex items-start gap-4">
@@ -124,7 +124,7 @@ export function CookingView({ title, ingredients, steps }: CookingViewProps) {
                   >
                     {index + 1}
                   </span>
-                  <span className={cn('transition-colors', checked && 'text-(--color-ink-muted)')}>
+                  <span className={cn('transition-colors', checked && 'text-(--color-ink-2)')}>
                     {step}
                   </span>
                 </label>

@@ -13,12 +13,16 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-/** One entry in the prep/cook/serves panel beside the title. */
+/**
+ * One entry in the prep/cook/serves panel beside the title. The value is set
+ * large in the display face so the three numbers read as a glanceable
+ * summary rather than as a definition list.
+ */
 function Stat({ term, children }: { term: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-6">
-      <dt className="text-sm text-(--color-ink-muted)">{term}</dt>
-      <dd className="tnum text-lg font-medium">{children}</dd>
+    <div className="border-t border-(--color-border) px-4 py-3 first:border-t-0">
+      <dt className="eyebrow">{term}</dt>
+      <dd className="tnum mt-1 font-serif text-3xl font-extrabold">{children}</dd>
     </div>
   )
 }
@@ -34,16 +38,30 @@ export default async function RecipePage({
 
   return (
     <article>
-      <header className="border-b border-(--color-border-subtle) pb-8">
+      <header className="border-b border-(--color-border) pb-8 sm:pb-9">
         {/* Title and stats share the width: the panel gives the numbers a home
             on the right rather than leaving that half of the header empty. */}
-        <div className="gap-10 lg:grid lg:grid-cols-[1fr_15rem] lg:items-start">
+        <div className="gap-11 lg:grid lg:grid-cols-[1fr_11.25rem] lg:items-start">
           <div>
-            <h1 className="text-4xl leading-tight font-semibold text-balance sm:text-5xl">
+            {/* Above the title, as in the mockup: the tags set the expectation
+                for what kind of dish this is before the name is read. */}
+            {recipe.tags.length > 0 && (
+              <ul className="mb-3.5 flex flex-wrap gap-1.5">
+                {recipe.tags.map((link) => (
+                  <li
+                    key={link.tag.id}
+                    className="rounded-[5px] bg-(--color-accent-soft) px-2.5 py-1 text-[11px] font-semibold tracking-[0.05em] uppercase text-(--color-accent)"
+                  >
+                    {link.tag.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <h1 className="text-4xl leading-[0.98] font-extrabold tracking-[-0.035em] text-balance italic sm:text-[52px]">
               {recipe.title}
             </h1>
             {recipe.description && (
-              <p className="mt-3 max-w-prose text-lg text-(--color-ink-muted)">
+              <p className="mt-4 max-w-[56ch] text-base leading-[1.65] text-(--color-ink-2)">
                 {recipe.description}
               </p>
             )}
@@ -75,7 +93,7 @@ export default async function RecipePage({
             </div>
           </div>
 
-          <dl className={cn(card, 'mt-8 space-y-3 p-5 lg:mt-0')}>
+          <dl className={cn(card, 'mt-8 overflow-hidden lg:mt-0')}>
             <Stat term="Prep">{formatMinutes(recipe.prepMinutes)}</Stat>
             <Stat term="Cook">{formatMinutes(recipe.cookMinutes)}</Stat>
             <Stat term="Serves">{recipe.servings ?? '—'}</Stat>
@@ -83,23 +101,28 @@ export default async function RecipePage({
         </div>
       </header>
 
-      <div className="mt-8 gap-10 lg:grid lg:grid-cols-[21rem_1fr]">
+      <div className="mt-10 gap-13 lg:grid lg:grid-cols-[16.875rem_1fr]">
         {/* The list stays in view while the method scrolls past it. */}
-        <section className={cn(card, 'h-fit p-6 lg:sticky lg:top-8')}>
-          <h2 className="text-xl font-semibold">Ingredients</h2>
-          <ul className="mt-4 space-y-2.5">
+        <section className="h-fit lg:sticky lg:top-[calc(var(--nav-h)+1.5rem)]">
+          <h2 className="eyebrow">Ingredients</h2>
+          {/* Quantity and name are columns, not a sentence: the aligned
+              measures let a cook check off the mise en place down one edge. */}
+          <ul className="mt-3">
             {recipe.ingredients.map((row) => (
-              <li key={row.id} className="flex gap-2.5">
-                <span className="tnum shrink-0 font-medium text-(--color-accent)">
+              <li
+                key={row.id}
+                className="grid grid-cols-[4.875rem_1fr] gap-3 border-b border-(--color-border) py-2.5 first:border-t first:border-(--color-border)"
+              >
+                <span className="tnum text-right text-[13.5px] font-semibold text-(--color-accent)">
                   {[formatQuantity(row.quantity), row.unit]
                     .filter(Boolean)
                     .join(' ')}
                 </span>
-                <span>
+                <span className="text-sm">
                   {row.ingredient.name}
                   {row.note && (
-                    <span className="text-(--color-ink-muted)">
-                      , {row.note}
+                    <span className="block text-xs text-(--color-ink-2) italic">
+                      {row.note}
                     </span>
                   )}
                 </span>
@@ -109,35 +132,23 @@ export default async function RecipePage({
         </section>
 
         <section className="mt-10 lg:mt-0">
-          <h2 className="text-xl font-semibold">Instructions</h2>
+          <h2 className="eyebrow">Instructions</h2>
           {/* Numbered because the steps genuinely are a sequence -- and a
               cook glancing back mid-recipe needs to find their place again. */}
-          <ol className="mt-5 max-w-prose space-y-4">
+          <ol className="mt-5 max-w-prose space-y-7">
             {toSteps(recipe.instructions).map((step, index) => (
-              <li key={index} className="flex gap-4">
+              <li key={index} className="grid grid-cols-[2.375rem_1fr] gap-4.5">
                 <span
                   aria-hidden
-                  className="tnum mt-0.5 shrink-0 text-sm font-medium text-(--color-accent)"
+                  className="tnum flex size-[38px] items-center justify-center rounded-full border-[1.5px] border-(--color-border-hi) text-[13px] font-bold text-(--color-ink-2)"
                 >
                   {index + 1}
                 </span>
-                <span className="leading-relaxed">{step}</span>
+                <span className="text-base leading-[1.72]">{step}</span>
               </li>
             ))}
           </ol>
 
-          {recipe.tags.length > 0 && (
-            <ul className="mt-10 flex flex-wrap gap-2">
-              {recipe.tags.map((link) => (
-                <li
-                  key={link.tag.id}
-                  className="rounded-full bg-(--color-accent-soft) px-3 py-1 text-sm text-(--color-accent)"
-                >
-                  {link.tag.name}
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
       </div>
     </article>

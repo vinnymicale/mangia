@@ -150,7 +150,7 @@ test('captures the README screenshots', async ({ page, request }) => {
   await page.screenshot({ path: `${OUT}/entry.png`, caret: 'initial' })
 
   // Ingredients-on-hand search, showing coverage and what is missing.
-  await page.goto('/search')
+  await page.goto('/pantry')
   await page.getByLabel('Ingredients on hand').fill(
     'chicken thighs, garlic, soy sauce, broccoli florets, carrot',
   )
