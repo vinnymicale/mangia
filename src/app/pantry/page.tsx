@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { PantrySearch } from '@/components/PantrySearch'
 import { PageTitle } from '@/components/ui'
 
@@ -13,6 +14,17 @@ export default function PantryPage() {
         Cook from the pantry
       </PageTitle>
       <PantrySearch />
+
+      {/* The mirror-image question. A cook standing at the fridge has one or
+          the other, never both: a full kitchen to cook from, or one thing
+          that needs eating tonight. */}
+      <p className="mt-12 text-sm text-(--color-ink-2)">
+        Just one thing going off?{' '}
+        <Link href="/leftovers" className="font-medium text-(--color-accent) hover:underline">
+          Find what uses it up
+        </Link>
+        .
+      </p>
     </>
   )
 }
