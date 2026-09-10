@@ -1,9 +1,12 @@
 import { test, expect } from '@playwright/test'
 
-async function createRecipe(request: import('@playwright/test').APIRequestContext) {
+async function createRecipe(
+  request: import('@playwright/test').APIRequestContext,
+  title = 'Cacio e Pepe',
+) {
   const response = await request.post('/api/recipes', {
     data: {
-      title: 'Cacio e Pepe',
+      title,
       instructions: 'Boil the pasta.\n\nToss with cheese and pepper.',
       servings: 2,
       prepMinutes: 5,
@@ -48,4 +51,23 @@ test('edits a recipe title', async ({ page, request }) => {
 test('returns 404 for a missing recipe', async ({ page }) => {
   const response = await page.goto('/recipes/does-not-exist')
   expect(response?.status()).toBe(404)
+})
+
+test('deletes a recipe after confirming and returns to the index', async ({ page, request }) => {
+  const title = `Doomed Dish ${Date.now()}`
+  const id = await createRecipe(request, title)
+
+  await page.goto(`/recipes/${id}`)
+  // The first click only arms the control; the page must stay put, since the
+  // confirmation exists precisely so a stray click is not destructive.
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(page.getByRole('heading', { name: title })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Delete recipe' }).click()
+  await expect(page).toHaveURL('/')
+  await expect(page.getByText(title)).toHaveCount(0)
+
+  // The recipe is really gone, not just missing from the refreshed index.
+  const response = await request.get(`/api/recipes/${id}`)
+  expect(response.status()).toBe(404)
 })

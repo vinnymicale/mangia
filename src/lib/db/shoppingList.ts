@@ -209,6 +209,11 @@ export async function addManualItem(
   })
 }
 
-export async function deleteShoppingList(id: string): Promise<void> {
-  await db.shoppingList.delete({ where: { id } })
+/**
+ * Removes a list and, by cascade, its items and their recipe sources. Returns
+ * false when no such list exists, so the route can answer 404.
+ */
+export async function deleteShoppingList(id: string): Promise<boolean> {
+  const { count } = await db.shoppingList.deleteMany({ where: { id } })
+  return count > 0
 }

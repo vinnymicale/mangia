@@ -65,3 +65,44 @@ test('checks off and adds items', async ({ page, request }) => {
   await page.reload()
   await expect(page.getByRole('checkbox').first()).toBeChecked()
 })
+
+test('deletes a list from the index after confirming', async ({ page, request }) => {
+  const id = `del-${Date.now()}`
+  const [recipeId] = await seed(request, id)
+  const response = await request.post('/api/lists', {
+    data: { recipeIds: [recipeId], name: `Doomed ${id}` },
+  })
+  const listId = (await response.json()).id as string
+
+  await page.goto('/lists')
+  const row = page.getByRole('listitem').filter({ hasText: `Doomed ${id}` })
+  await expect(row).toBeVisible()
+
+  // The first click only arms the control -- the row must survive it, since
+  // that is the whole point of asking before deleting.
+  await row.getByRole('button', { name: `Delete Doomed ${id}` }).click()
+  await expect(row).toBeVisible()
+  await row.getByRole('button', { name: 'Delete list' }).click()
+
+  await expect(row).toHaveCount(0)
+  // Gone from the server too, not just from the client cache.
+  await page.reload()
+  await expect(page.getByText(`Doomed ${id}`)).toHaveCount(0)
+})
+
+test('keeps a list when the confirmation is cancelled', async ({ page, request }) => {
+  const id = `keep-${Date.now()}`
+  const [recipeId] = await seed(request, id)
+  const response = await request.post('/api/lists', {
+    data: { recipeIds: [recipeId], name: `Spared ${id}` },
+  })
+  await response.json()
+
+  await page.goto('/lists')
+  const row = page.getByRole('listitem').filter({ hasText: `Spared ${id}` })
+  await row.getByRole('button', { name: `Delete Spared ${id}` }).click()
+  await row.getByRole('button', { name: 'Cancel' }).click()
+
+  await page.reload()
+  await expect(page.getByText(`Spared ${id}`)).toBeVisible()
+})

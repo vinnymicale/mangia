@@ -36,6 +36,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  await deleteRecipe(id)
+  if (!(await deleteRecipe(id))) {
+    return NextResponse.json({ error: 'No such recipe.' }, { status: 404 })
+  }
   return NextResponse.json({ id })
 }

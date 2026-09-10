@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { ChefHat, Pencil } from 'lucide-react'
 import { getRecipe } from '@/lib/db/recipes'
 import { BackLink, button, card } from '@/components/ui'
+import { DeleteButton } from '@/components/DeleteButton'
 import {
   cn,
   formatMinutes,
@@ -92,6 +93,13 @@ export default async function RecipePage({
                   Source
                 </a>
               )}
+              <DeleteButton
+                endpoint={`/api/recipes/${recipe.id}`}
+                redirectTo="/"
+                label="Delete"
+                confirmLabel="Delete recipe"
+                size="lg"
+              />
             </div>
           </div>
 

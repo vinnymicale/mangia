@@ -121,8 +121,15 @@ describe('deleteRecipe', () => {
       title: 'Doomed', instructions: '',
       ingredients: [ingredient('kale', 1, 'bunch', '1 bunch kale')],
     })
-    await deleteRecipe(id)
+    expect(await deleteRecipe(id)).toBe(true)
     expect(await getRecipe(id)).toBeNull()
+  })
+
+  it('reports a missing recipe rather than throwing', async () => {
+    // The route turns this into a 404. Prisma's delete raises on a missing
+    // row, which would otherwise surface as a 500.
+    const { deleteRecipe } = await import('./recipes')
+    expect(await deleteRecipe('no-such-id')).toBe(false)
   })
 })
 

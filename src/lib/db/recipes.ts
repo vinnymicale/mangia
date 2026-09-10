@@ -140,8 +140,14 @@ export async function updateRecipe(id: string, input: RecipeInput): Promise<void
   })
 }
 
-export async function deleteRecipe(id: string): Promise<void> {
-  await db.recipe.delete({ where: { id } })
+/**
+ * Removes a recipe and, by cascade, its ingredient and tag rows. Returns
+ * false when no such recipe exists, so the route can answer 404 rather than
+ * letting Prisma's not-found error become a 500.
+ */
+export async function deleteRecipe(id: string): Promise<boolean> {
+  const { count } = await db.recipe.deleteMany({ where: { id } })
+  return count > 0
 }
 
 /**

@@ -275,3 +275,21 @@ describe('addManualItem', () => {
     expect(await db.ingredient.count({ where: { name: 'batteries' } })).toBe(0)
   })
 })
+
+describe('deleteShoppingList', () => {
+  it('removes the list and its items', async () => {
+    const { db } = await import('./client')
+    const { generateShoppingList, addManualItem, getShoppingList, deleteShoppingList } =
+      await import('./shoppingList')
+    const listId = await generateShoppingList([])
+    await addManualItem(listId, { name: 'Twine' })
+    expect(await deleteShoppingList(listId)).toBe(true)
+    expect(await getShoppingList(listId)).toBeNull()
+    expect(await db.shoppingListItem.count({ where: { listId } })).toBe(0)
+  })
+
+  it('reports a missing list rather than throwing', async () => {
+    const { deleteShoppingList } = await import('./shoppingList')
+    expect(await deleteShoppingList('no-such-id')).toBe(false)
+  })
+})
