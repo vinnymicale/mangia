@@ -1,6 +1,25 @@
 import { PrismaClient } from '@/generated/prisma/client'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 
+/**
+ * better-sqlite3 ships a prebuilt binary built against Node 22's ABI. On an
+ * older major it does not throw -- it segfaults inside the Database
+ * constructor, killing the process with no stack and nothing to catch. That is
+ * unrecoverable and close to undiagnosable, so refuse to start instead.
+ *
+ * package.json engines plus engine-strict catches `npm install`, but nothing
+ * guards `npm run dev` in a shell that switched Node afterwards, which is
+ * exactly how this bites.
+ */
+const MIN_NODE_MAJOR = 22
+const nodeMajor = Number(process.versions.node.split('.')[0])
+if (nodeMajor < MIN_NODE_MAJOR) {
+  throw new Error(
+    `Mangia needs Node ${MIN_NODE_MAJOR}+ but is running Node ${process.versions.node}. ` +
+      'better-sqlite3 would segfault on the first query. Run `nvm use` (see .nvmrc), then retry.',
+  )
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient
   ftsReady?: Promise<void>
