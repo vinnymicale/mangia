@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import { Check, Pencil, X } from 'lucide-react'
 import { button, field } from '@/components/ui'
 import { cn } from '@/lib/utils'
+import { TAG_KINDS, type TagKind } from '@/lib/tagKinds'
 
 export interface TagRow {
   id: string
   name: string
   count: number
+  kind: TagKind
 }
 
 export function TagsEditor({ initial }: { initial: TagRow[] }) {
@@ -27,6 +29,32 @@ export function TagsEditor({ initial }: { initial: TagRow[] }) {
     setConfirming(null)
     setError(null)
     setNotice(null)
+  }
+
+  /**
+   * Files a tag under a kind. The row is updated locally rather than refetched:
+   * a kind change moves nothing and merges nothing, so there is no other row
+   * whose count could have shifted underneath it.
+   */
+  async function classify(row: TagRow, kind: TagKind) {
+    const previous = rows
+    setError(null)
+    setNotice(null)
+    setRows((current) =>
+      current.map((item) => (item.id === row.id ? { ...item, kind } : item)),
+    )
+    try {
+      const response = await fetch(`/api/tags/${row.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ kind }),
+      })
+      if (!response.ok) throw new Error()
+      router.refresh()
+    } catch {
+      setRows(previous)
+      setError('Could not change that tag\u2019s kind.')
+    }
   }
 
   /**
@@ -134,6 +162,21 @@ export function TagsEditor({ initial }: { initial: TagRow[] }) {
             ) : (
               <>
                 <span className="flex-1 text-sm">{row.name}</span>
+                {/* A select rather than free text: the taxonomy is closed on
+                    purpose, and a tag that can be filed under anything is back
+                    to being the unsorted pile this exists to break up. */}
+                <select
+                  aria-label={`Kind of ${row.name}`}
+                  value={row.kind}
+                  onChange={(event) => void classify(row, event.target.value as TagKind)}
+                  className={cn(field, 'w-auto shrink-0 py-1 text-[13px]')}
+                >
+                  {TAG_KINDS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {kind}
+                    </option>
+                  ))}
+                </select>
                 {/* The count is what tells a typo from a real category. */}
                 <span className="tnum shrink-0 text-[13px] text-(--color-ink-2)">
                   {row.count === 1 ? '1 recipe' : `${row.count} recipes`}

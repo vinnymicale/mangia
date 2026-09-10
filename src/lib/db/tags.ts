@@ -1,9 +1,12 @@
 import { db } from './client'
+import { isTagKind, type TagKind } from '../tagKinds'
 
 export interface TagWithCount {
   id: string
   name: string
   count: number
+  /** The taxonomy slot. Anything unrecognised reads as freeform. */
+  kind: TagKind
 }
 
 /**
@@ -17,7 +20,14 @@ export async function listTagsWithCounts(): Promise<TagWithCount[]> {
     orderBy: { name: 'asc' },
   })
   return tags
-    .map((tag) => ({ id: tag.id, name: tag.name, count: tag._count.recipes }))
+    .map((tag) => ({
+      id: tag.id,
+      name: tag.name,
+      count: tag._count.recipes,
+      // Falls back rather than vanishing: the column predates this taxonomy,
+      // and a tag the user cannot see is a tag they cannot fix.
+      kind: isTagKind(tag.kind) ? tag.kind : ('freeform' as const),
+    }))
     // Sorted here rather than in SQL: Prisma cannot order by a relation count
     // and the tag list is small enough that it does not matter. Ties fall back
     // to the name so the order is stable between renders.

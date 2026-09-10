@@ -58,3 +58,20 @@ test('deletes a tag after confirming, leaving the recipe', async ({ page, reques
   const recipe = await request.get(`/api/recipes/${id}`)
   expect(recipe.status()).toBe(200)
 })
+
+test('files a tag under a kind and keeps it after a reload', async ({ page, request }) => {
+  const suffix = `kind-${Date.now()}`
+  const tag = `napoli-${suffix}`
+  await seedTagged(request, `Pizza ${suffix}`, [tag])
+
+  await page.goto('/settings')
+  const select = page.getByRole('combobox', { name: `Kind of ${tag}` })
+  // Every tag starts in the pile the schema default puts it in.
+  await expect(select).toHaveValue('freeform')
+  await select.selectOption('cuisine')
+
+  // A reload is the assertion that matters: the select is optimistic, so only
+  // a fresh server render proves the classification actually persisted.
+  await page.reload()
+  await expect(page.getByRole('combobox', { name: `Kind of ${tag}` })).toHaveValue('cuisine')
+})
