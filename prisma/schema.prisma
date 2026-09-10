@@ -24,6 +24,7 @@ model Recipe {
   ingredients RecipeIngredient[]
   tags        RecipeTag[]
   itemSources ShoppingItemSource[]
+  cookLogs    CookLog[]
 
   @@index([title])
   @@index([createdAt])
@@ -84,6 +85,23 @@ model RecipeTag {
   tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([recipeId, tagId])
+}
+
+/// One entry per time the dish was actually made. Recipe.lastCookedAt is a
+/// single overwritable field, so it can answer "when did I last make this?"
+/// but loses everything before that. The log keeps the whole run, which is what
+/// makes rotation and "not cooked in a year" answerable -- and gives a note
+/// somewhere to live that belongs to one cook rather than the recipe.
+model CookLog {
+  id       String   @id @default(cuid())
+  recipeId String
+  cookedAt DateTime @default(now())
+  note     String?
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId, cookedAt])
+  @@index([cookedAt])
 }
 
 model ShoppingList {
