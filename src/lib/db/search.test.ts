@@ -38,6 +38,13 @@ beforeAll(async () => {
     instructions: 'Simmer.',
     ingredients: [ing('chicken'), ing('onion'), ing('curry powder')],
   })
+  await createRecipe({
+    title: 'Roast Potatoes',
+    description: 'Crisp edges',
+    instructions: 'Roast hot.',
+    notes: 'Parboil first and shake the colander to rough them up.',
+    ingredients: [ing('potato')],
+  })
 })
 
 afterAll(() => cleanup())
@@ -61,6 +68,16 @@ describe('searchRecipes', () => {
     const { searchRecipes } = await import('./search')
     const ids = await searchRecipes('gar')
     expect(ids.length).toBeGreaterThan(0)
+  })
+
+  it('matches on notes', async () => {
+    // Notes hold the part of a recipe you actually reread -- the substitution
+    // that worked, the oven quirk -- so they have to be searchable.
+    const { searchRecipes } = await import('./search')
+    const { getRecipe } = await import('./recipes')
+    const ids = await searchRecipes('parboil')
+    expect(ids).toHaveLength(1)
+    expect((await getRecipe(ids[0]))?.title).toBe('Roast Potatoes')
   })
 
   it('returns an empty array for no match', async () => {

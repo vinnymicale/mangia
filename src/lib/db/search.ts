@@ -47,7 +47,7 @@ export async function searchRecipes(query: string): Promise<string[]> {
   await ensureDbReady()
 
   const rows = await db.$queryRawUnsafe<{ recipeId: string }[]>(
-    `SELECT recipeId FROM RecipeFts2 WHERE RecipeFts2 MATCH ? ORDER BY rank`,
+    `SELECT recipeId FROM RecipeFts3 WHERE RecipeFts3 MATCH ? ORDER BY rank`,
     match,
   )
   return rows.map((row) => row.recipeId)
