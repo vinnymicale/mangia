@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ChefHat, Pencil } from 'lucide-react'
+import { ChefHat, Pencil, Printer } from 'lucide-react'
 import { getRecipe } from '@/lib/db/recipes'
 import { BackLink, button, card } from '@/components/ui'
 import { DeleteButton } from '@/components/DeleteButton'
@@ -83,6 +83,13 @@ export default async function RecipePage({
               >
                 <Pencil className="size-4" aria-hidden />
                 Edit
+              </Link>
+              <Link
+                href={`/recipes/${recipe.id}/print`}
+                className={button({ variant: 'ghost', size: 'lg' })}
+              >
+                <Printer className="size-4" aria-hidden />
+                Print
               </Link>
               {safeExternalUrl(recipe.sourceUrl) && (
                 <a

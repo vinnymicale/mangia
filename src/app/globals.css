@@ -108,3 +108,42 @@ input[type='checkbox'] { accent-color: var(--color-accent); }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Printing a recipe is printing the recipe: navigation, buttons and the app's
+   own colours are all things paper has no use for. Scoped to the print route
+   so an accidental Ctrl-P elsewhere still prints what is on screen. */
+@media print {
+  @page { margin: 14mm; }
+
+  .print-card {
+    /* The layout centres content in a max-width column with page padding; on
+       paper the sheet's own margin is the only margin wanted. */
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Ink, not the screen's warm ground. Backgrounds are dropped rather than
+     forced, so a colour printer does not flood the page. */
+  body:has(.print-card) {
+    background: #fff;
+    color: #000;
+  }
+
+  body:has(.print-card) nav,
+  body:has(.print-card) main {
+    padding: 0;
+    margin: 0;
+    max-width: none;
+  }
+
+  body:has(.print-card) nav {
+    display: none;
+  }
+
+  /* Anchors would otherwise print their href in some browsers, and every
+     ingredient row is inside a list that should not break mid-item. */
+  .print-card a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
