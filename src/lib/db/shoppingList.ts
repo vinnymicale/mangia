@@ -217,3 +217,15 @@ export async function deleteShoppingList(id: string): Promise<boolean> {
   const { count } = await db.shoppingList.deleteMany({ where: { id } })
   return count > 0
 }
+
+/**
+ * Drops the items already in the basket, returning how many went so the caller
+ * can say. Scoped to the one list: the same ingredient is often checked off on
+ * another list that has not been shopped yet.
+ */
+export async function clearCheckedItems(listId: string): Promise<number> {
+  const { count } = await db.shoppingListItem.deleteMany({
+    where: { listId, checked: true },
+  })
+  return count
+}

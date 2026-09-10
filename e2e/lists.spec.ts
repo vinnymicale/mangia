@@ -66,6 +66,28 @@ test('checks off and adds items', async ({ page, request }) => {
   await expect(page.getByRole('checkbox').first()).toBeChecked()
 })
 
+test('shows progress and clears the checked items', async ({ page, request }) => {
+  const id = `clear-${Date.now()}`
+  const [recipeId] = await seed(request, id)
+  const response = await request.post('/api/lists', { data: { recipeIds: [recipeId] } })
+  const listId = (await response.json()).id as string
+
+  await page.goto(`/lists/${listId}`)
+  const before = await page.getByRole('checkbox').count()
+  await expect(page.getByRole('status')).toHaveText(`0 of ${before} in the basket`)
+
+  await page.getByRole('checkbox').first().check()
+  await expect(page.getByRole('status')).toHaveText(`1 of ${before} in the basket`)
+
+  await page.getByRole('button', { name: 'Clear 1 checked' }).click()
+  await expect(page.getByRole('checkbox')).toHaveCount(before - 1)
+  await expect(page.getByRole('status')).toHaveText(`0 of ${before - 1} in the basket`)
+
+  // The removal is real, not just local state.
+  await page.reload()
+  await expect(page.getByRole('checkbox')).toHaveCount(before - 1)
+})
+
 test('deletes a list from the index after confirming', async ({ page, request }) => {
   const id = `del-${Date.now()}`
   const [recipeId] = await seed(request, id)

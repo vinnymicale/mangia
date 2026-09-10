@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { toggleItemChecked, addManualItem } from '@/lib/db/shoppingList'
+import {
+  toggleItemChecked,
+  addManualItem,
+  clearCheckedItems,
+} from '@/lib/db/shoppingList'
 
 const PostSchema = z.object({
   name: z.string().min(1),
@@ -50,4 +54,16 @@ export async function PATCH(
   }
   await toggleItemChecked(parsed.data.itemId, parsed.data.checked)
   return NextResponse.json({ ok: true })
+}
+
+/**
+ * Clears the checked items off a list. Scoped to the list in the path, so
+ * there is no body to validate -- there is nothing else this can mean.
+ */
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  return NextResponse.json({ removed: await clearCheckedItems(id) })
 }

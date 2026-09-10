@@ -293,3 +293,43 @@ describe('deleteShoppingList', () => {
     expect(await deleteShoppingList('no-such-id')).toBe(false)
   })
 })
+
+describe('clearCheckedItems', () => {
+  it('removes only the checked items and reports how many went', async () => {
+    const { db } = await import('./client')
+    const { generateShoppingList, addManualItem, toggleItemChecked, clearCheckedItems } =
+      await import('./shoppingList')
+    const listId = await generateShoppingList([])
+    const bought = await addManualItem(listId, { name: 'Cling film' })
+    await addManualItem(listId, { name: 'Bin bags' })
+    await toggleItemChecked(bought.id, true)
+
+    expect(await clearCheckedItems(listId)).toBe(1)
+    const left = await db.shoppingListItem.findMany({ where: { listId } })
+    expect(left).toHaveLength(1)
+    expect(left[0]!.checked).toBe(false)
+  })
+
+  it('leaves other lists alone', async () => {
+    const { db } = await import('./client')
+    const { generateShoppingList, addManualItem, toggleItemChecked, clearCheckedItems } =
+      await import('./shoppingList')
+    const mine = await generateShoppingList([])
+    const theirs = await generateShoppingList([])
+    const a = await addManualItem(mine, { name: 'Sponges' })
+    const b = await addManualItem(theirs, { name: 'Matches' })
+    await toggleItemChecked(a.id, true)
+    await toggleItemChecked(b.id, true)
+
+    expect(await clearCheckedItems(mine)).toBe(1)
+    expect(await db.shoppingListItem.count({ where: { listId: theirs } })).toBe(1)
+  })
+
+  it('reports zero when nothing is checked', async () => {
+    const { generateShoppingList, addManualItem, clearCheckedItems } =
+      await import('./shoppingList')
+    const listId = await generateShoppingList([])
+    await addManualItem(listId, { name: 'Skewers' })
+    expect(await clearCheckedItems(listId)).toBe(0)
+  })
+})

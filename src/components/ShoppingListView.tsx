@@ -48,6 +48,31 @@ export function ShoppingListView({
   const [rows, setRows] = useState(items)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [clearing, setClearing] = useState(false)
+
+  const checked = rows.filter((row) => row.checked).length
+  const done = rows.length > 0 && checked === rows.length
+
+  /**
+   * Removes the checked rows for good. Unlike toggle() this is not optimistic:
+   * it throws work away, so the rows stay put until the server confirms rather
+   * than vanishing and reappearing if the write failed.
+   */
+  async function clearChecked() {
+    setError(null)
+    setClearing(true)
+    try {
+      const response = await fetch(`/api/lists/${listId}/items`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) throw new Error()
+      setRows((current) => current.filter((row) => !row.checked))
+    } catch {
+      setError('Could not clear those items.')
+    } finally {
+      setClearing(false)
+    }
+  }
 
   /**
    * The checkbox updates optimistically -- ticking things off should feel
@@ -97,62 +122,99 @@ export function ShoppingListView({
 
   return (
     <div className="space-y-6">
-      {/* One card, divided into aisle sections -- the mockup's .list-card. */}
-      <div className="overflow-hidden rounded-[12px] border border-(--color-border) bg-(--color-surface) shadow-(--shadow-card)">
-        {byCategory(rows).map(([category, group], groupIndex) => (
-          <section
-            key={category}
-            className={cn(
-              'py-1.5',
-              groupIndex > 0 && 'border-t border-(--color-border)',
-            )}
+      {/* Progress is the one thing worth knowing at a glance mid-shop: how much
+          is left. The bar is decorative -- the count beside it carries the same
+          information as text -- so it is hidden from the accessibility tree. */}
+      {rows.length > 0 && (
+        <div className="flex items-center gap-4">
+          <div
+            aria-hidden
+            className="h-1.5 flex-1 overflow-hidden rounded-full bg-(--color-border)"
           >
-            <h2 className="eyebrow px-6 pt-3 pb-1.5">{category}</h2>
-            <ul>
-              {group.map((row) => {
-                const source = row.sourceTitles.join(', ')
-                return (
-                  <li key={row.id}>
-                    {/* A full-width row: in a shop this is tapped one-handed. */}
-                    <label className="flex cursor-pointer items-center gap-3.5 px-6 py-2.5 transition-colors hover:bg-(--color-accent-soft)">
-                      <input
-                        type="checkbox"
-                        className="size-[17px] shrink-0 cursor-pointer"
-                        checked={row.checked}
-                        onChange={(event) =>
-                          void toggle(row.id, event.target.checked)
-                        }
-                      />
-                      {/* The measure gets a fixed column so a list of amounts
-                          lines up down one edge while shopping. */}
-                      <span className="tnum w-18 shrink-0 text-right text-[13px] font-semibold text-(--color-accent)">
-                        {[formatQuantity(row.quantity), row.unit]
-                          .filter(Boolean)
-                          .join(' ')}
-                      </span>
-                      <span
-                        className={cn(
-                          'min-w-0 flex-1 text-sm transition-colors',
-                          row.checked && 'text-(--color-ink-2) line-through',
-                        )}
-                      >
-                        {row.name}
-                      </span>
-                      {/* Why this is on the list -- secondary to the item, so
-                          it sits out on the right rather than inline. */}
-                      {source !== '' && (
-                        <span className="ml-auto shrink-0 text-[11px] text-(--color-ink-2)">
-                          {source}
+            <div
+              className="h-full rounded-full bg-(--color-accent) transition-[width] duration-300"
+              style={{ width: `${(checked / rows.length) * 100}%` }}
+            />
+          </div>
+          <p role="status" className="tnum shrink-0 text-[13px] text-(--color-ink-2)">
+            {done ? 'All done' : `${checked} of ${rows.length} in the basket`}
+          </p>
+          {checked > 0 && (
+            <button
+              type="button"
+              onClick={() => void clearChecked()}
+              disabled={clearing}
+              className={button({ variant: 'ghost', size: 'sm' })}
+            >
+              {clearing ? 'Clearing…' : `Clear ${checked} checked`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Clearing the last item leaves the card an empty shell, so say what
+          happened rather than rendering a blank frame. */}
+      {rows.length === 0 ? (
+        <p className="rounded-[12px] border border-dashed border-(--color-border) px-6 py-8 text-center text-sm text-(--color-ink-2)">
+          Nothing left on this list. Add an item below to keep going.
+        </p>
+      ) : (
+        <div className="overflow-hidden rounded-[12px] border border-(--color-border) bg-(--color-surface) shadow-(--shadow-card)">
+          {byCategory(rows).map(([category, group], groupIndex) => (
+            <section
+              key={category}
+              className={cn(
+                'py-1.5',
+                groupIndex > 0 && 'border-t border-(--color-border)',
+              )}
+            >
+              <h2 className="eyebrow px-6 pt-3 pb-1.5">{category}</h2>
+              <ul>
+                {group.map((row) => {
+                  const source = row.sourceTitles.join(', ')
+                  return (
+                    <li key={row.id}>
+                      {/* A full-width row: in a shop this is tapped one-handed. */}
+                      <label className="flex cursor-pointer items-center gap-3.5 px-6 py-2.5 transition-colors hover:bg-(--color-accent-soft)">
+                        <input
+                          type="checkbox"
+                          className="size-[17px] shrink-0 cursor-pointer"
+                          checked={row.checked}
+                          onChange={(event) =>
+                            void toggle(row.id, event.target.checked)
+                          }
+                        />
+                        {/* The measure gets a fixed column so a list of amounts
+                            lines up down one edge while shopping. */}
+                        <span className="tnum w-18 shrink-0 text-right text-[13px] font-semibold text-(--color-accent)">
+                          {[formatQuantity(row.quantity), row.unit]
+                            .filter(Boolean)
+                            .join(' ')}
                         </span>
-                      )}
-                    </label>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        ))}
-      </div>
+                        <span
+                          className={cn(
+                            'min-w-0 flex-1 text-sm transition-colors',
+                            row.checked && 'text-(--color-ink-2) line-through',
+                          )}
+                        >
+                          {row.name}
+                        </span>
+                        {/* Why this is on the list -- secondary to the item, so
+                            it sits out on the right rather than inline. */}
+                        {source !== '' && (
+                          <span className="ml-auto shrink-0 text-[11px] text-(--color-ink-2)">
+                            {source}
+                          </span>
+                        )}
+                      </label>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
 
       <div className="flex max-w-md gap-2">
         <input
