@@ -38,13 +38,16 @@ test('merges compatible quantities across recipes', async ({ page, request }) =>
   await page.getByRole('button', { name: /Make a list from 2 recipes/ }).click()
 
   // 2 cups + 4 tbsp = 2.25 cups, attributed to both recipes. Asserted on the
-  // row rather than one text node: the measure sits in its own column, so the
-  // quantity and the name are siblings rather than one string.
+  // row rather than one text node: the measure and the attribution each sit in
+  // their own column, so they are siblings of the name rather than one string.
   const merged = page.getByRole('listitem').filter({ hasText: `flour ${id}` })
   await expect(merged).toContainText('2.25 cup')
-  await expect(
-    page.getByText(new RegExp(`for Pancakes ${id}, Waffles ${id}|for Waffles ${id}, Pancakes ${id}`)),
-  ).toBeVisible()
+
+  // Both source recipes are named, in either order -- the merge collapses two
+  // rows into one, and the row has to say which recipes it is standing in for.
+  // Order is not part of the contract, so it is not asserted.
+  await expect(merged).toContainText(`Pancakes ${id}`)
+  await expect(merged).toContainText(`Waffles ${id}`)
 })
 
 test('checks off and adds items', async ({ page, request }) => {
