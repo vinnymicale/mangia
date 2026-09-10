@@ -240,3 +240,38 @@ describe('toggleItemChecked', () => {
     expect(after!.items[0].checked).toBe(true)
   })
 })
+
+describe('addManualItem', () => {
+  it('links an item whose name is a known ingredient', async () => {
+    const { resolveIngredient } = await import('./ingredients')
+    const { generateShoppingList, addManualItem } = await import('./shoppingList')
+    await resolveIngredient('shallot')
+    const listId = await generateShoppingList([])
+    const item = await addManualItem(listId, { name: 'Shallot', quantity: 2, unit: null })
+    expect(item.ingredient?.name).toBe('shallot')
+    expect(item.manualText).toBeNull()
+  })
+
+  it('follows an alias to the canonical ingredient', async () => {
+    const { resolveIngredient, linkAlias } = await import('./ingredients')
+    const { generateShoppingList, addManualItem } = await import('./shoppingList')
+    await resolveIngredient('coriander')
+    await linkAlias('cilantro', 'coriander')
+    const listId = await generateShoppingList([])
+    const item = await addManualItem(listId, { name: 'cilantro' })
+    expect(item.ingredient?.name).toBe('coriander')
+  })
+
+  it('keeps an unrecognized name as manual text without inventing an ingredient', async () => {
+    // "batteries" is not food. Creating an Ingredient row for it would leak
+    // into pantry matching and the unknown-ingredient prompts forever.
+    const { db } = await import('./client')
+    const { generateShoppingList, addManualItem } = await import('./shoppingList')
+    const listId = await generateShoppingList([])
+    const item = await addManualItem(listId, { name: 'Batteries', quantity: 4, unit: null })
+    expect(item.ingredientId).toBeNull()
+    expect(item.manualText).toBe('Batteries')
+    expect(item.quantity).toBe(4)
+    expect(await db.ingredient.count({ where: { name: 'batteries' } })).toBe(0)
+  })
+})

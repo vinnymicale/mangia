@@ -23,8 +23,9 @@ export async function POST(
   return NextResponse.json(
     {
       id: item.id,
-      // The relation is optional in the schema, but addManualItem always
-      // resolves an ingredient, so manualText is only a defensive fallback.
+      // addManualItem links an ingredient only when the name is already
+      // known, so a non-food entry like "batteries" comes back unlinked and
+      // the typed name is what the row is called.
       name: item.ingredient?.name ?? parsed.data.name,
       quantity: item.quantity,
       unit: item.unit,

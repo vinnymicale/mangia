@@ -1,5 +1,5 @@
 import { db } from './client'
-import { resolveIngredient } from './ingredients'
+import { resolveIngredient, findUnknownNames } from './ingredients'
 import {
   normalizeUnit,
   areUnitsCompatible,
@@ -185,11 +185,22 @@ export async function addManualItem(
   input: { name: string; quantity?: number | null; unit?: string | null },
 ) {
   const count = await db.shoppingListItem.count({ where: { listId } })
-  const ingredient = await resolveIngredient(input.name)
+
+  // A shopping list is not only food: "batteries" and "foil" belong on it, but
+  // creating an Ingredient for them would leak into pantry matching and the
+  // unknown-ingredient prompts forever. So the name is only linked when it
+  // already resolves to a known ingredient or alias -- checked with a lookup
+  // that does not write, unlike resolveIngredient, which creates before it can
+  // report isNew. Anything else is kept verbatim as manualText.
+  const [unknown] = await findUnknownNames([input.name])
+  const ingredient =
+    unknown === undefined ? await resolveIngredient(input.name) : null
+
   return db.shoppingListItem.create({
     data: {
       listId,
-      ingredientId: ingredient.id,
+      ingredientId: ingredient?.id ?? null,
+      manualText: ingredient === null ? input.name.trim() : null,
       quantity: input.quantity ?? null,
       unit: input.unit ?? null,
       sortOrder: count,
