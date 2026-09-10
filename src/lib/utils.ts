@@ -67,3 +67,18 @@ export function toSteps(instructions: string): string[] {
     .map((part) => part.trim())
     .filter(Boolean)
 }
+
+/**
+ * A cook's date, as a person would say it. Cooking history is read at a glance
+ * -- "did I make this recently?" -- so the year is dropped within the current
+ * one and kept beyond it, which is where the ambiguity actually starts.
+ */
+export function formatCookDate(date: Date): string {
+  const sameYear = date.getFullYear() === new Date().getFullYear()
+  return date.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  })
+}

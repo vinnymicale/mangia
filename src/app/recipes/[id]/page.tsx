@@ -2,8 +2,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChefHat, Pencil, Printer } from 'lucide-react'
 import { getRecipe } from '@/lib/db/recipes'
+import { listCookLog } from '@/lib/db/cookLog'
 import { BackLink, button, card } from '@/components/ui'
 import { DeleteButton } from '@/components/DeleteButton'
+import { CookHistory } from '@/components/CookHistory'
 import {
   cn,
   formatMinutes,
@@ -37,6 +39,8 @@ export default async function RecipePage({
   const { id } = await params
   const recipe = await getRecipe(id)
   if (recipe === null) notFound()
+
+  const cookLog = await listCookLog(recipe.id)
 
   return (
     <article>
@@ -182,6 +186,16 @@ export default async function RecipePage({
               </div>
             </div>
           )}
+          {/* Below the method and the notes: history is what the cook consults
+              after deciding to make this again, not while reading it. */}
+          <CookHistory
+            recipeId={recipe.id}
+            initialEntries={cookLog.map((entry) => ({
+              id: entry.id,
+              cookedAt: entry.cookedAt.toISOString(),
+              note: entry.note,
+            }))}
+          />
         </section>
       </div>
     </article>
