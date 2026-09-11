@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server'
-import { readDriveConfig } from '@/lib/backup/drive'
+import { describeConfig } from '@/lib/config'
 import { runBackup, lastBackupRun } from '@/lib/backup/scheduler'
 
 export async function GET() {
-  const config = await readDriveConfig()
-  return NextResponse.json({ config, lastRun: lastBackupRun() })
+  const { drive } = await describeConfig()
+  return NextResponse.json({ config: drive, lastRun: lastBackupRun() })
 }
 
 /** "Back up now". The only way to trigger a run without waiting for the timer. */
 export async function POST() {
-  const config = await readDriveConfig()
-  if (!config.configured) {
+  const { drive } = await describeConfig()
+  if (!drive.configured) {
     return NextResponse.json(
-      { error: config.problem ?? 'Google Drive backups are not configured.' },
+      { error: drive.problem ?? 'Google Drive backups are not configured.' },
       { status: 400 },
     )
   }

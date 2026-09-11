@@ -43,7 +43,7 @@ That rebuilds `e2e.db`, seeds the mock recipes, and overwrites
 ## Run it
 
 ```bash
-cp .env.example .env   # set LLM_API_KEY if you want URL import
+cp .env.example .env   # optional: everything here is also settable in the UI
 docker compose up -d
 ```
 
@@ -72,6 +72,10 @@ Open <http://localhost:3000>.
 The FTS5 virtual table lives outside the Prisma schema, so
 `scripts/ensure-fts.mjs` has to run after any reset of the database. It is
 idempotent — running it again on an up-to-date database is a no-op.
+
+Pulling new work onto an existing `dev.db` needs `npm run db:migrate` too. Both
+test databases are built from scratch on every run, so no test covers the
+upgrade path — a missing table shows up first as a runtime error in the browser.
 
 ### Tests
 
@@ -113,9 +117,23 @@ Three doors, all on **Add**:
 
 Every row keeps its original text, so nothing is lost to a bad parse.
 
-## LLM providers
+## Settings
 
-Set `LLM_PROVIDER=gemini` with an `LLM_API_KEY`, or
-`LLM_PROVIDER=openai-compatible` pointed at Ollama or LM Studio via
-`LLM_BASE_URL`. The app works without either — you lose URL import and
-the AI clean-up button, nothing else.
+Everything configurable lives at **/settings**, and nothing there needs a
+restart to take effect. Secrets are shown masked — an API key as its last four
+characters, a Google service account as its address — and a field you do not
+open is left exactly as it was.
+
+Each setting can also come from the environment. A value saved in the UI wins;
+`.env` is the fallback, which is what makes a fresh container start configured.
+
+| Setting | Environment fallback |
+| --- | --- |
+| Provider, API key, model, base URL | `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL` |
+| Service account key, folder id, interval | `GOOGLE_DRIVE_CREDENTIALS`, `GOOGLE_DRIVE_FOLDER_ID`, `GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS` |
+
+### LLM providers
+
+Choose Gemini with an API key, or an OpenAI-compatible endpoint pointed at
+Ollama or LM Studio via its base URL. The app works without either — you lose
+URL import and the AI clean-up button, nothing else.

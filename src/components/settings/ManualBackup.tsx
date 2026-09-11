@@ -10,7 +10,7 @@ interface ImportOutcome {
   skipped: number
 }
 
-export function BackupEditor() {
+export function ManualBackup() {
   const fileInput = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)

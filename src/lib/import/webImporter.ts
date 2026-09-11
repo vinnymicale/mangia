@@ -152,7 +152,7 @@ export async function importFromUrl(
     return { draft: structured, method: 'jsonld', sourceUrl: url }
   }
 
-  const provider = deps.provider ?? getProvider()
+  const provider = deps.provider ?? (await getProvider())
   const text = htmlToText(html).slice(0, MAX_TEXT_CHARS)
   const draft = await provider.extractRecipe(text)
   return { draft, method: 'llm', sourceUrl: url }

@@ -1,5 +1,5 @@
-import { readFile } from 'node:fs/promises'
 import { createSign } from 'node:crypto'
+import type { ServiceAccountKey } from '@/lib/config'
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files'
@@ -11,75 +11,20 @@ const FILES_URL = 'https://www.googleapis.com/drive/v3/files'
  */
 const SCOPE = 'https://www.googleapis.com/auth/drive.file'
 
-/** What the settings page is allowed to see. Deliberately holds no secret. */
-export interface DriveConfig {
-  configured: boolean
-  clientEmail: string | null
-  folderId: string | null
-  intervalHours: number
-  /** Set when credentials were supplied but cannot be used, so the user can fix it. */
-  problem: string | null
-}
-
-interface ServiceAccountKey {
-  client_email: string
-  private_key: string
-}
-
 /**
- * Credentials live on disk and are named by an environment variable rather than
- * being pasted into the app: the file never enters the database, never reaches
- * a page, and is removed by deleting it. Backups are off until it exists, so an
- * installation that never sets this is unaffected by any of this code.
+ * Everything below takes an already-resolved service account key rather than
+ * reading one. Where credentials come from -- a row written by the settings
+ * page or a file named by the environment -- is `lib/config.ts`'s business, and
+ * keeping that out of here is what lets a key change take effect immediately.
+ *
+ * The original reasoning for the env-var-only design was that the key "never
+ * enters the database, never reaches a page." The second half still holds and
+ * is enforced below and in config.ts: no caller here ever returns the private
+ * key. The first half is deliberately given up, because making the key editable
+ * from the UI is the point, and a SQLite file is not a weaker home for it than
+ * a key file on the same disk.
  */
-async function loadKey(): Promise<ServiceAccountKey | { problem: string } | null> {
-  const path = process.env.GOOGLE_DRIVE_CREDENTIALS?.trim()
-  if (!path) return null
-
-  let raw: string
-  try {
-    raw = await readFile(path, 'utf8')
-  } catch {
-    return { problem: `The credentials file at ${path} could not be read.` }
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<ServiceAccountKey>
-    if (typeof parsed.client_email !== 'string' || typeof parsed.private_key !== 'string') {
-      return { problem: 'That file is not a Google service account key.' }
-    }
-    return { client_email: parsed.client_email, private_key: parsed.private_key }
-  } catch {
-    return { problem: 'That file is not a Google service account key.' }
-  }
-}
-
-/** Hours between automatic backups. Never zero: that would busy-loop the timer. */
-export function backupIntervalHours(): number {
-  const raw = Number(process.env.GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS)
-  if (!Number.isFinite(raw) || raw <= 0) return 24
-  return raw
-}
-
-export async function readDriveConfig(): Promise<DriveConfig> {
-  const key = await loadKey()
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID?.trim() || null
-  const intervalHours = backupIntervalHours()
-
-  if (key === null) {
-    return { configured: false, clientEmail: null, folderId, intervalHours, problem: null }
-  }
-  if ('problem' in key) {
-    return { configured: false, clientEmail: null, folderId, intervalHours, problem: key.problem }
-  }
-  return {
-    configured: true,
-    clientEmail: key.client_email,
-    folderId,
-    intervalHours,
-    problem: null,
-  }
-}
+export type { ServiceAccountKey } from '@/lib/config'
 
 function base64url(input: Buffer | string): string {
   return Buffer.from(input)
@@ -138,21 +83,21 @@ export interface UploadResult {
  * kilobytes, and resumable uploads would add a round trip and a failure mode
  * for no benefit at this size.
  */
-export async function uploadBackup(contents: string, name: string): Promise<UploadResult> {
-  const key = await loadKey()
-  if (key === null) throw new Error('Google Drive backups are not configured.')
-  if ('problem' in key) throw new Error(key.problem)
-
-  const token = await accessToken(key)
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID?.trim()
-
+export async function uploadBackup(
+  key: ServiceAccountKey,
+  folderId: string | null,
+  contents: string,
+  name: string,
+): Promise<UploadResult> {
   // A service account owns no personal Drive quota, so without a shared folder
   // to write into the upload fails with a confusing storage error. Say so here.
   if (!folderId) {
     throw new Error(
-      'Set GOOGLE_DRIVE_FOLDER_ID to a Drive folder shared with the service account.',
+      'Set a Drive folder id under Settings. The folder must be shared with the service account.',
     )
   }
+
+  const token = await accessToken(key)
 
   const boundary = `mangia-${Date.now()}`
   const metadata = JSON.stringify({ name, parents: [folderId] })
@@ -194,10 +139,11 @@ export async function uploadBackup(contents: string, name: string): Promise<Uplo
  * without bound; only files this service account created are visible to it, so
  * nothing else in the folder can be caught by the sweep.
  */
-export async function pruneBackups(keep: number): Promise<number> {
-  const key = await loadKey()
-  if (key === null || 'problem' in key) return 0
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID?.trim()
+export async function pruneBackups(
+  key: ServiceAccountKey,
+  folderId: string | null,
+  keep: number,
+): Promise<number> {
   if (!folderId) return 0
 
   const token = await accessToken(key)
@@ -221,4 +167,33 @@ export async function pruneBackups(keep: number): Promise<number> {
     })
   }
   return doomed.length
+}
+
+/**
+ * Proves the credentials and the folder actually work, without writing
+ * anything. Exchanging the assertion for a token checks the key; fetching the
+ * folder's metadata checks that the id is real and that the service account
+ * has been given access to it -- which is the step users most often miss,
+ * because sharing happens in Drive's UI and nothing in Mangia can do it.
+ */
+export async function checkAccess(
+  key: ServiceAccountKey,
+  folderId: string | null,
+): Promise<string> {
+  const token = await accessToken(key)
+  if (!folderId) {
+    throw new Error('Set a Drive folder id. The folder must be shared with the service account.')
+  }
+
+  const response = await fetch(`${FILES_URL}/${folderId}?fields=id,name`, {
+    headers: { authorization: `Bearer ${token}` },
+  })
+  const body = (await response.json()) as { name?: string; error?: { message?: string } }
+  if (!response.ok || !body.name) {
+    throw new Error(
+      body.error?.message ??
+        'That folder could not be opened. Check the id, and that it is shared with the service account.',
+    )
+  }
+  return body.name
 }

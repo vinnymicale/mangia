@@ -46,7 +46,7 @@ describe('POST /api/clean-ingredients', () => {
         rawText: 'a good glug of olive oil', confidence: 'high',
       },
     ])
-    vi.mocked(getProvider).mockReturnValue({
+    vi.mocked(getProvider).mockResolvedValue({
       name: 'test', extractRecipe: vi.fn(), parseIngredientLines,
     })
 
@@ -65,7 +65,7 @@ describe('POST /api/clean-ingredients', () => {
   })
 
   it('returns 502 when the provider fails', async () => {
-    vi.mocked(getProvider).mockReturnValue({
+    vi.mocked(getProvider).mockResolvedValue({
       name: 'test',
       extractRecipe: vi.fn(),
       parseIngredientLines: vi.fn().mockRejectedValue(new Error('quota exceeded')),

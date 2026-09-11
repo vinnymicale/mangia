@@ -1,77 +1,50 @@
-import { test, expect, type APIRequestContext } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 
-// The e2e database persists across runs, and the settings page lists every tag
-// that has ever been seeded. Each test therefore uses its own suffixed tag
-// names so getByRole stays unambiguous no matter what else has run.
-async function seedTagged(request: APIRequestContext, title: string, tags: string[]) {
-  const response = await request.post('/api/recipes', {
-    data: { title, instructions: 'Cook it.', ingredients: [], tags },
-  })
-  expect(response.status()).toBe(201)
-  return (await response.json()).id as string
-}
+// The split these tests exist to pin down: /settings is application
+// configuration and /staples is food. They used to be one route, and the only
+// thing keeping them apart now is that each page renders what belongs to it.
 
-test('renames a tag from the settings page', async ({ page, request }) => {
-  const suffix = `rename-${Date.now()}`
-  await seedTagged(request, `Ragu ${suffix}`, [`sunday-${suffix}`])
-
+test('settings holds application configuration and no food', async ({ page }) => {
   await page.goto('/settings')
-  await page.getByRole('button', { name: `Rename sunday-${suffix}` }).click()
-  const input = page.getByRole('textbox', { name: `Rename sunday-${suffix}` })
-  await input.fill(`weekend-${suffix}`)
-  await page.getByRole('button', { name: `Save sunday-${suffix}` }).click()
 
-  await expect(page.getByText(`weekend-${suffix}`)).toBeVisible()
-  await expect(page.getByText(`sunday-${suffix}`, { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'AI integration' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Backups' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Staples', exact: true })).toHaveCount(0)
 })
 
-test('merges a tag when renamed onto one that already exists', async ({ page, request }) => {
-  const suffix = `merge-${Date.now()}`
-  const from = `stew-${suffix}`
-  const to = `braise-${suffix}`
-  await seedTagged(request, `Osso Buco ${suffix}`, [from])
-  await seedTagged(request, `Short Rib ${suffix}`, [to])
+test('staples holds the food curation and no configuration', async ({ page }) => {
+  await page.goto('/staples')
 
-  await page.goto('/settings')
-  await page.getByRole('button', { name: `Rename ${from}` }).click()
-  await page.getByRole('textbox', { name: `Rename ${from}` }).fill(to)
-  await page.getByRole('button', { name: `Save ${from}` }).click()
-
-  // The merge is the surprising outcome, so the page has to say it happened.
-  await expect(page.getByRole('status')).toContainText('Merged')
-  await expect(page.getByText(from, { exact: true })).toHaveCount(0)
-  await expect(page.getByText(`${to}`, { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'AI integration' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Backups' })).toHaveCount(0)
 })
 
-test('deletes a tag after confirming, leaving the recipe', async ({ page, request }) => {
-  const suffix = `delete-${Date.now()}`
-  const tag = `spicy-${suffix}`
-  const id = await seedTagged(request, `Vindaloo ${suffix}`, [tag])
+test('both pages are reachable from the nav', async ({ page }) => {
+  await page.goto('/')
+  const nav = page.getByRole('navigation', { name: 'Main' })
 
-  await page.goto('/settings')
-  await page.getByRole('button', { name: `Delete ${tag}` }).click()
-  // Arming alone must not delete: the confirm step is the whole point.
-  await expect(page.getByText(tag, { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Delete tag' }).click()
+  await nav.getByRole('link', { name: 'Staples' }).click()
+  await expect(page).toHaveURL(/\/staples$/)
 
-  await expect(page.getByText(tag, { exact: true })).toHaveCount(0)
-  const recipe = await request.get(`/api/recipes/${id}`)
-  expect(recipe.status()).toBe(200)
+  await nav.getByRole('link', { name: 'Settings' }).click()
+  await expect(page).toHaveURL(/\/settings$/)
 })
 
-test('files a tag under a kind and keeps it after a reload', async ({ page, request }) => {
-  const suffix = `kind-${Date.now()}`
-  const tag = `napoli-${suffix}`
-  await seedTagged(request, `Pizza ${suffix}`, [tag])
-
+// The guarantee the whole feature rests on: a saved value is in effect for the
+// next request, with no restart. Reloading is a fresh server render, so the
+// value coming back proves it was actually persisted and re-read.
+test('a changed backup interval survives a reload without a restart', async ({ page }) => {
   await page.goto('/settings')
-  const select = page.getByRole('combobox', { name: `Kind of ${tag}` })
-  // Every tag starts in the pile the schema default puts it in.
-  await expect(select).toHaveValue('freeform')
-  await select.selectOption('cuisine')
 
-  // A reload is the assertion that matters: the select is optimistic, so only
-  // a fresh server render proves the classification actually persisted.
+  const interval = page.getByLabel('Back up every')
+  await interval.fill('7')
+  await page.getByRole('button', { name: 'Save' }).nth(1).click()
+  await expect(page.getByText('Saved. Backups are scheduled from these values from now on.')).toBeVisible()
+
   await page.reload()
-  await expect(page.getByRole('combobox', { name: `Kind of ${tag}` })).toHaveValue('cuisine')
+  await expect(page.getByLabel('Back up every')).toHaveValue('7')
+
+  // Put it back, since the e2e database persists across runs.
+  await page.getByLabel('Back up every').fill('24')
+  await page.getByRole('button', { name: 'Save' }).nth(1).click()
 })

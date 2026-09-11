@@ -15,7 +15,8 @@ const LINKS = [
   { href: "/pantry", label: "Pantry" },
   { href: "/lists", label: "Lists" },
   { href: "/diary", label: "Diary" },
-  { href: "/settings", label: "Staples" },
+  { href: "/staples", label: "Staples" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export function Nav() {

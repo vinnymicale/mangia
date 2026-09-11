@@ -1,6 +1,10 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // Next 16 guards against two dev servers by locking `<distDir>/lock`, so a
+  // running `next dev` blocks the e2e suite from starting its own. Giving the
+  // e2e server its own build directory is what lets the two coexist.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   // Ship a self-contained server bundle so the runtime image needs no install.
   output: 'standalone',
   // Native and adapter packages must stay external; bundling breaks the .node binding.

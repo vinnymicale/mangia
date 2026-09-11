@@ -1,34 +1,41 @@
 import { GeminiProvider } from './gemini'
 import { OpenAiCompatibleProvider } from './openaiCompatible'
+import { resolveConfig, type ResolvedConfig } from '@/lib/config'
 import type { LlmProvider } from './types'
 
 export * from './types'
 
-/** Builds the configured provider. Throws when configuration is incomplete. */
-export function getProvider(): LlmProvider {
-  const kind = process.env.LLM_PROVIDER ?? 'gemini'
-  const apiKey = process.env.LLM_API_KEY
-  if (!apiKey) {
-    throw new Error('LLM_API_KEY is not set. Configure it to use AI features.')
+/**
+ * Builds a provider from already-resolved values. Throws when configuration is
+ * incomplete.
+ *
+ * Split from `getProvider` so the settings page's connection test can build a
+ * provider from a config it already has in hand without a second read.
+ */
+export function buildProvider(llm: ResolvedConfig['llm']): LlmProvider {
+  if (!llm.apiKey) {
+    throw new Error('No API key is set. Add one under Settings to use AI features.')
   }
 
-  if (kind === 'openai-compatible') {
-    const baseUrl = process.env.LLM_BASE_URL
-    if (!baseUrl) {
-      throw new Error(
-        'LLM_BASE_URL is required when LLM_PROVIDER is openai-compatible.',
-      )
+  if (llm.provider === 'openai-compatible') {
+    if (!llm.baseUrl) {
+      throw new Error('A base URL is required for an OpenAI-compatible provider.')
     }
-    return new OpenAiCompatibleProvider(
-      baseUrl,
-      apiKey,
-      process.env.LLM_MODEL ?? 'gpt-4o-mini',
-    )
+    return new OpenAiCompatibleProvider(llm.baseUrl, llm.apiKey, llm.model)
   }
 
-  if (kind === 'gemini') {
-    return new GeminiProvider(apiKey, process.env.LLM_MODEL ?? 'gemini-2.5-flash')
-  }
+  return new GeminiProvider(llm.apiKey, llm.model)
+}
 
-  throw new Error(`Unknown LLM_PROVIDER: ${kind}`)
+/**
+ * Builds the configured provider, reading configuration fresh every time.
+ *
+ * The freshness is the point and not an oversight: both call sites invoke this
+ * per request and hold nothing between them, which is what lets a key saved on
+ * the settings page work on the very next request with no restart. Memoising
+ * the provider here would quietly undo that.
+ */
+export async function getProvider(): Promise<LlmProvider> {
+  const config = await resolveConfig()
+  return buildProvider(config.llm)
 }

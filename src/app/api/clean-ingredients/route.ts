@@ -11,7 +11,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const ingredients = await getProvider().parseIngredientLines(parsed.data.lines)
+    const provider = await getProvider()
+    const ingredients = await provider.parseIngredientLines(parsed.data.lines)
     return NextResponse.json({ ingredients })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

@@ -146,3 +146,12 @@ model PantryStaple {
 
   ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 }
+
+/// Editable application configuration, one row per key. Rows win over the
+/// matching environment variable so the settings page is authoritative once
+/// used; an installation that never opens it keeps behaving as it always did.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

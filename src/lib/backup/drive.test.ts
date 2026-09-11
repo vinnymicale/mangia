@@ -1,97 +1,120 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { generateKeyPairSync } from 'node:crypto'
+import { uploadBackup, pruneBackups, type ServiceAccountKey } from './drive'
 
-let dir: string
-const saved = { ...process.env }
+/**
+ * A real (throwaway) RSA key, because the JWT assertion is genuinely signed and
+ * a placeholder string would make `createSign` throw before any of the request
+ * shaping under test could run.
+ */
+const key: ServiceAccountKey = {
+  client_email: 'backups@example.iam.gserviceaccount.com',
+  private_key: generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+  }).privateKey,
+}
+
+/** Every request the module made, in order, for assertions after the fact. */
+let calls: { url: string; init: RequestInit | undefined }[]
+
+function respond(body: unknown, ok = true): Response {
+  return {
+    ok,
+    json: async () => body,
+  } as unknown as Response
+}
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'mangia-drive-'))
+  calls = []
 })
 
 afterEach(() => {
-  rmSync(dir, { recursive: true, force: true })
-  process.env = { ...saved }
+  vi.unstubAllGlobals()
 })
 
-function writeKey(overrides: Record<string, unknown> = {}): string {
-  const path = join(dir, 'key.json')
-  writeFileSync(
-    path,
-    JSON.stringify({
-      type: 'service_account',
-      client_email: 'backups@example.iam.gserviceaccount.com',
-      private_key: '-----BEGIN PRIVATE KEY-----\nnot-a-real-key\n-----END PRIVATE KEY-----\n',
-      ...overrides,
+/** Answers the token exchange, then defers to `handler` for the real request. */
+function stubFetch(handler: (url: string, init?: RequestInit) => Response): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+      calls.push({ url, init })
+      if (url.startsWith('https://oauth2.googleapis.com/token')) {
+        return respond({ access_token: 'token-123' })
+      }
+      return handler(url, init)
     }),
   )
-  return path
 }
 
-describe('readDriveConfig', () => {
-  it('reports unconfigured when no credentials are set', async () => {
-    delete process.env.GOOGLE_DRIVE_CREDENTIALS
-    const { readDriveConfig } = await import('./drive')
-
-    const config = await readDriveConfig()
-    expect(config.configured).toBe(false)
+describe('uploadBackup', () => {
+  it('refuses to upload without a folder id', async () => {
+    stubFetch(() => respond({}))
+    await expect(uploadBackup(key, null, '{}', 'backup.json')).rejects.toThrow(/folder id/i)
+    // Not even a token was fetched: the check happens before any network call.
+    expect(calls).toHaveLength(0)
   })
 
-  it('reads a service account key from the path in the environment', async () => {
-    process.env.GOOGLE_DRIVE_CREDENTIALS = writeKey()
-    const { readDriveConfig } = await import('./drive')
+  it('uploads into the configured folder and reports the stored name', async () => {
+    stubFetch(() => respond({ id: 'file-1', name: 'backup.json' }))
 
-    const config = await readDriveConfig()
-    expect(config.configured).toBe(true)
-    expect(config.clientEmail).toBe('backups@example.iam.gserviceaccount.com')
+    const result = await uploadBackup(key, 'folder-9', '{"recipes":[]}', 'backup.json')
+
+    expect(result).toEqual({ fileId: 'file-1', name: 'backup.json', bytes: 14 })
+    const upload = calls[1]
+    expect(upload.url).toContain('uploadType=multipart')
+    expect(upload.init?.headers).toMatchObject({ authorization: 'Bearer token-123' })
+    expect(String(upload.init?.body)).toContain('"parents":["folder-9"]')
   })
 
-  it('reports unconfigured, not a crash, when the file is missing', async () => {
-    process.env.GOOGLE_DRIVE_CREDENTIALS = join(dir, 'absent.json')
-    const { readDriveConfig } = await import('./drive')
-
-    const config = await readDriveConfig()
-    expect(config.configured).toBe(false)
-    expect(config.problem).toMatch(/could not be read|not found/i)
+  it('surfaces the message Google returned', async () => {
+    stubFetch(() => respond({ error: { message: 'File not found: folder-9.' } }, false))
+    await expect(uploadBackup(key, 'folder-9', '{}', 'backup.json')).rejects.toThrow(
+      'File not found: folder-9.',
+    )
   })
 
-  it('reports a problem when the file is not a service account key', async () => {
-    process.env.GOOGLE_DRIVE_CREDENTIALS = writeKey({ private_key: undefined })
-    const { readDriveConfig } = await import('./drive')
+  /**
+   * The sibling of the private-key assertion in config.test.ts, at the other
+   * end of the path. The key is signed with, never sent: a bug that put it in a
+   * request body would ship the credential to Google's upload endpoint in
+   * plaintext, and no type would catch it.
+   */
+  it('never puts the private key in a request', async () => {
+    stubFetch(() => respond({ id: 'file-1', name: 'backup.json' }))
+    await uploadBackup(key, 'folder-9', '{}', 'backup.json')
 
-    const config = await readDriveConfig()
-    expect(config.configured).toBe(false)
-    expect(config.problem).toMatch(/service account/i)
-  })
-
-  it('never exposes the private key to callers', async () => {
-    process.env.GOOGLE_DRIVE_CREDENTIALS = writeKey()
-    const { readDriveConfig } = await import('./drive')
-
-    // The config is rendered on a settings page; a key that reaches the client
-    // is a key in the page source.
-    const config = await readDriveConfig()
-    expect(JSON.stringify(config)).not.toContain('BEGIN PRIVATE KEY')
+    for (const call of calls) {
+      expect(JSON.stringify(call)).not.toContain('BEGIN PRIVATE KEY')
+    }
   })
 })
 
-describe('backupIntervalHours', () => {
-  it('defaults to daily when unset', async () => {
-    delete process.env.GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS
-    const { backupIntervalHours } = await import('./drive')
-    expect(backupIntervalHours()).toBe(24)
+describe('pruneBackups', () => {
+  it('deletes only the archives past the keep count', async () => {
+    stubFetch((url) => {
+      if (url.startsWith('https://www.googleapis.com/drive/v3/files?')) {
+        return respond({ files: [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }] })
+      }
+      return respond({})
+    })
+
+    expect(await pruneBackups(key, 'folder-9', 2)).toBe(2)
+    const deletes = calls.filter((call) => call.init?.method === 'DELETE')
+    // Newest first, so the two swept are the oldest of the four.
+    expect(deletes.map((call) => call.url.split('/').pop())).toEqual(['c', 'd'])
   })
 
-  it('honours an explicit interval', async () => {
-    process.env.GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS = '6'
-    const { backupIntervalHours } = await import('./drive')
-    expect(backupIntervalHours()).toBe(6)
+  it('does nothing when no folder is configured', async () => {
+    stubFetch(() => respond({}))
+    expect(await pruneBackups(key, null, 2)).toBe(0)
+    expect(calls).toHaveLength(0)
   })
 
-  it('falls back to daily rather than scheduling a runaway loop', async () => {
-    process.env.GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS = '0'
-    const { backupIntervalHours } = await import('./drive')
-    expect(backupIntervalHours()).toBe(24)
+  it('gives up quietly when the listing fails', async () => {
+    stubFetch(() => respond({}, false))
+    expect(await pruneBackups(key, 'folder-9', 2)).toBe(0)
   })
 })

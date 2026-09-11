@@ -14,8 +14,10 @@ export default defineConfig({
   use: { baseURL, trace: 'on-first-retry' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    // A dedicated DB file so e2e runs never disturb the dev database.
-    command: `DATABASE_URL="file:./e2e.db" npm run dev -- --port ${PORT}`,
+    // A dedicated DB file so e2e runs never disturb the dev database, and a
+    // dedicated build directory so Next's one-dev-server-per-distDir lock does
+    // not make an already-running `npm run dev` block the whole suite.
+    command: `DATABASE_URL="file:./e2e.db" NEXT_DIST_DIR=.next-e2e npm run dev -- --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
