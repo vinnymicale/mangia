@@ -30,8 +30,6 @@ COPY --from=builder /app/prisma ./prisma
 # fails on first query. The Prisma CLI stays out — scripts/migrate.mjs applies
 # migrations through better-sqlite3 instead.
 COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
-COPY --from=builder /app/node_modules/bindings ./node_modules/bindings
-COPY --from=builder /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
 COPY scripts ./scripts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
