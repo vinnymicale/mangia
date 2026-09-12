@@ -25,9 +25,27 @@ model Recipe {
   tags        RecipeTag[]
   itemSources ShoppingItemSource[]
   cookLogs    CookLog[]
+  photo       RecipePhoto?
 
   @@index([title])
   @@index([createdAt])
+}
+
+/**
+ * The photo a recipe was read from, kept only when the cook asks for it.
+ *
+ * A row rather than a file on disk: the backup serialises the database to JSON
+ * rather than copying the SQLite file, so a row travels with the backup and a
+ * file in /data would silently not.
+ */
+model RecipePhoto {
+  id        String   @id @default(cuid())
+  recipeId  String   @unique
+  data      Bytes
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 }
 
 model RecipeIngredient {

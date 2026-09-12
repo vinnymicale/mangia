@@ -167,4 +167,50 @@ describe('importRecipeDocument', () => {
     expect(log).toHaveLength(1)
     expect(log[0].note).toBe('Too salty.')
   })
+
+  it('carries a photo across as base64, bytes intact', async () => {
+    const { exportRecipe, importRecipeDocument } = await import('./transfer')
+    const { setRecipePhoto, getRecipePhoto } = await import('./photos')
+    const { createRecipe } = await import('./recipes')
+
+    const bytes = Buffer.from([0xff, 0xd8, 0x00, 0x7f, 0x41])
+    const source = await createRecipe({
+      title: 'Photographed Card',
+      instructions: 'Read the card.',
+      ingredients: [],
+    })
+    await setRecipePhoto(source, bytes, 'image/jpeg')
+
+    const doc = await exportRecipe(source)
+    expect(doc!.recipe.photo).toEqual({
+      mimeType: 'image/jpeg',
+      data: bytes.toString('base64'),
+    })
+
+    const result = await importRecipeDocument(doc!)
+    const restored = await getRecipePhoto(result.ids[0])
+    expect(restored!.mimeType).toBe('image/jpeg')
+    expect(Buffer.from(restored!.data).equals(bytes)).toBe(true)
+  })
+
+  it('imports a recipe from an older file that has no photo field', async () => {
+    const { importRecipeDocument } = await import('./transfer')
+    const { getRecipePhoto } = await import('./photos')
+
+    const result = await importRecipeDocument({
+      mangia: { version: 1 },
+      recipes: [
+        {
+          title: 'Photoless',
+          instructions: 'Make it.',
+          description: null, sourceUrl: null, prepMinutes: null,
+          cookMinutes: null, servings: null, notes: null,
+          lastCookedAt: null, tags: [], ingredients: [], cookLog: [],
+        },
+      ],
+    })
+
+    expect(result.imported).toBe(1)
+    expect(await getRecipePhoto(result.ids[0])).toBeNull()
+  })
 })

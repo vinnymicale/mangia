@@ -1,5 +1,6 @@
 import { db } from './client'
 import { createRecipe } from './recipes'
+import { setRecipePhoto } from './photos'
 import type { Confidence } from '@/lib/parsing/types'
 
 /**
@@ -22,6 +23,17 @@ export interface ExportedCook {
   note: string | null
 }
 
+/**
+ * A photo carried inside the JSON document, base64 since JSON has no bytes.
+ *
+ * Optional on read: a file written before photos existed simply has no field,
+ * which is why EXPORT_VERSION does not move for this.
+ */
+export interface ExportedPhoto {
+  data: string
+  mimeType: string
+}
+
 export interface ExportedRecipe {
   title: string
   description: string | null
@@ -35,6 +47,7 @@ export interface ExportedRecipe {
   tags: string[]
   ingredients: ExportedIngredient[]
   cookLog: ExportedCook[]
+  photo?: ExportedPhoto | null
 }
 
 export interface ExportDocument {
@@ -51,6 +64,7 @@ const RECIPE_INCLUDE = {
   ingredients: { include: { ingredient: true }, orderBy: { sortOrder: 'asc' } },
   tags: { include: { tag: true } },
   cookLogs: { orderBy: { cookedAt: 'desc' } },
+  photo: true,
 } as const
 
 type RecipeRow = Awaited<
@@ -86,6 +100,12 @@ function serialize(row: RecipeRow): ExportedRecipe {
       cookedAt: entry.cookedAt.toISOString(),
       note: entry.note,
     })),
+    photo: row.photo
+      ? {
+          data: Buffer.from(row.photo.data).toString('base64'),
+          mimeType: row.photo.mimeType,
+        }
+      : null,
   }
 }
 
@@ -210,6 +230,14 @@ export async function importRecipeDocument(doc: ExportDocument): Promise<ImportR
       await db.cookLog.create({
         data: { recipeId: id, cookedAt, note: cook.note ?? null },
       })
+    }
+
+    if (
+      entry.photo &&
+      typeof entry.photo.data === 'string' &&
+      typeof entry.photo.mimeType === 'string'
+    ) {
+      await setRecipePhoto(id, Buffer.from(entry.photo.data, 'base64'), entry.photo.mimeType)
     }
 
     // Restored from the file rather than recomputed: a recipe can carry a
