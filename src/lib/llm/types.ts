@@ -27,6 +27,13 @@ export interface LlmProvider {
   extractRecipe(text: string): Promise<RecipeDraft>
   /** Structures ingredient lines the deterministic parser could not handle. */
   parseIngredientLines(lines: string[]): Promise<ParsedIngredient[]>
+  /**
+   * Extracts a structured recipe from a photo, typically a handwritten card.
+   *
+   * Throws when the configured model cannot see images. That is expected rather
+   * than exceptional -- the photo import path catches it and falls back to OCR.
+   */
+  extractRecipeFromImage(image: Buffer, mimeType: string): Promise<RecipeDraft>
 }
 
 export const EXTRACT_RECIPE_PROMPT = `You extract structured recipes from text.
@@ -41,6 +48,25 @@ Rules:
 - "ingredient" is the food itself, without quantity, unit, or preparation.
 - "note" holds preparation ("minced", "divided", "room temperature").
 - Use null, never a guess, when a value is absent.
+- Convert fractions to decimals (1/2 becomes 0.5).
+- For a range, use the lower bound.`
+
+export const EXTRACT_RECIPE_FROM_IMAGE_PROMPT = `You transcribe recipes from photographs, usually handwritten cards.
+Return ONLY valid JSON matching this shape:
+{"title":string,"description":string|null,"instructions":string,
+ "servings":number|null,"prepMinutes":number|null,"cookMinutes":number|null,
+ "ingredients":[{"quantity":number|null,"unit":string|null,"ingredient":string,"note":string|null}],
+ "tags":string[]}
+
+Rules:
+- Transcribe what is written. Do not normalise wording, correct a recipe you
+  think is wrong, or add a step the card does not have.
+- When handwriting is illegible, use null rather than guessing. A missing
+  quantity is recoverable; a wrong one is not.
+- Keep the card's own words for "ingredient" and "note".
+- "instructions" is markdown, one numbered step per line.
+- "ingredient" is the food itself, without quantity, unit, or preparation.
+- "note" holds preparation ("minced", "divided", "room temperature").
 - Convert fractions to decimals (1/2 becomes 0.5).
 - For a range, use the lower bound.`
 

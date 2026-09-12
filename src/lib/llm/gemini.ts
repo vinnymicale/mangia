@@ -4,6 +4,7 @@ import {
   RecipeDraftSchema,
   DraftIngredientSchema,
   EXTRACT_RECIPE_PROMPT,
+  EXTRACT_RECIPE_FROM_IMAGE_PROMPT,
   PARSE_LINES_PROMPT,
   type LlmProvider,
   type RecipeDraft,
@@ -37,6 +38,20 @@ export class GeminiProvider implements LlmProvider {
   async extractRecipe(text: string): Promise<RecipeDraft> {
     const raw = await this.generate(EXTRACT_RECIPE_PROMPT, text)
     return RecipeDraftSchema.parse(JSON.parse(stripFences(raw)))
+  }
+
+  async extractRecipeFromImage(image: Buffer, mimeType: string): Promise<RecipeDraft> {
+    const response = await this.client.models.generateContent({
+      model: this.model,
+      contents: {
+        parts: [
+          { text: EXTRACT_RECIPE_FROM_IMAGE_PROMPT },
+          { inlineData: { mimeType, data: image.toString('base64') } },
+        ],
+      },
+      config: { responseMimeType: 'application/json' },
+    })
+    return RecipeDraftSchema.parse(JSON.parse(stripFences(response.text ?? '')))
   }
 
   async parseIngredientLines(lines: string[]): Promise<ParsedIngredient[]> {

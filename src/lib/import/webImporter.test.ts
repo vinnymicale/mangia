@@ -19,6 +19,7 @@ function fakeProvider(draft: RecipeDraft): LlmProvider {
   return {
     name: 'fake',
     extractRecipe: vi.fn(async () => draft),
+    extractRecipeFromImage: vi.fn(async () => draft),
     parseIngredientLines: vi.fn(async () => []),
   }
 }

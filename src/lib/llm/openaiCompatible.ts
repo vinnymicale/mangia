@@ -3,6 +3,7 @@ import {
   RecipeDraftSchema,
   DraftIngredientSchema,
   EXTRACT_RECIPE_PROMPT,
+  EXTRACT_RECIPE_FROM_IMAGE_PROMPT,
   PARSE_LINES_PROMPT,
   type LlmProvider,
   type RecipeDraft,
@@ -50,6 +51,48 @@ export class OpenAiCompatibleProvider implements LlmProvider {
 
   async extractRecipe(text: string): Promise<RecipeDraft> {
     const raw = await this.generate(EXTRACT_RECIPE_PROMPT, text)
+    return RecipeDraftSchema.parse(JSON.parse(stripFences(raw)))
+  }
+
+  /**
+   * The `image_url` content part with a data URI is the shape OpenAI, Ollama
+   * and LM Studio all accept, so one request body covers every backend the
+   * settings page can point at.
+   */
+  async extractRecipeFromImage(image: Buffer, mimeType: string): Promise<RecipeDraft> {
+    const response = await fetch(`${this.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [
+          { role: 'system', content: EXTRACT_RECIPE_FROM_IMAGE_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Transcribe this recipe.' },
+              {
+                type: 'image_url',
+                image_url: { url: `data:${mimeType};base64,${image.toString('base64')}` },
+              },
+            ],
+          },
+        ],
+        response_format: { type: 'json_object' },
+      }),
+    })
+    // A text-only model rejects this request. The photo import path treats that
+    // as its signal to fall back to OCR rather than as a failure.
+    if (!response.ok) {
+      throw new Error(
+        `LLM request failed: ${response.status} ${await response.text()}`,
+      )
+    }
+    const body = await response.json()
+    const raw = body.choices?.[0]?.message?.content ?? ''
     return RecipeDraftSchema.parse(JSON.parse(stripFences(raw)))
   }
 
