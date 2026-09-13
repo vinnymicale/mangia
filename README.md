@@ -107,15 +107,40 @@ npm run db:studio   # browse the database
 
 ## Entering recipes
 
-Three doors, all on **Add**:
+Four doors, all on **Add**:
 
 1. **Paste a block of ingredients.** Parsed locally with no model call.
    Anything the parser is unsure of is flagged amber; one button sends only
    those lines to the LLM.
 2. **Paste a URL.** JSON-LD is tried first; the model is a fallback.
-3. **Type it out.** The same review table, starting empty.
+3. **Photograph a card.** See below.
+4. **Type it out.** The same review table, starting empty.
 
 Every row keeps its original text, so nothing is lost to a bad parse.
+
+### From a photo
+
+Upload or shoot a photo of a recipe — a card, a page, a sheet of someone's
+handwriting — and it is read into the same review form the other doors lead
+to, filled in and waiting to be corrected. The photo stays above the form,
+collapsible, so the reading can be checked against the card without leaving
+the page. Nothing is saved until you press save.
+
+A configured model reads it if there is one, because a model handles
+handwriting and layout far better. Without one — or if the call fails — it
+falls back to on-device text recognition (tesseract.js), which runs entirely
+in the container and sends nothing anywhere. That path is rougher, especially
+on handwriting, and it tells you so; printed cards come through well. Either
+way it attempts a full split into title, times, ingredients, and method
+rather than dumping raw text.
+
+The photo itself is discarded once the recipe is saved, unless you tick
+**Keep the original photo with the recipe**, which is off by default. Kept
+photos are scaled down a little, stored beside the recipe in the database,
+shown on the recipe page, and included in exports and backups.
+
+The first photo read in a fresh container downloads its language data
+(~5 MB), so it is slower than the ones after it.
 
 ## Settings
 
@@ -136,4 +161,5 @@ Each setting can also come from the environment. A value saved in the UI wins;
 
 Choose Gemini with an API key, or an OpenAI-compatible endpoint pointed at
 Ollama or LM Studio via its base URL. The app works without either — you lose
-URL import and the AI clean-up button, nothing else.
+URL import and the AI clean-up button, and photo import falls back to
+on-device text recognition. Nothing else.
