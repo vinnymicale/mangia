@@ -1,3 +1,5 @@
+<img src="public/logo.png" alt="" width="120" align="right" />
+
 # mangia
 
 A self-hosted recipe manager. Single user, no login, one SQLite file.

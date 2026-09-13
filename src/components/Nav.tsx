@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -35,8 +36,16 @@ export function Nav() {
       <div className="mx-auto flex max-w-[1120px] flex-wrap items-center gap-x-5 gap-y-2 px-5 py-2.5 sm:h-full sm:flex-nowrap sm:px-7 sm:py-0">
         <Link
           href="/"
-          className="shrink-0 font-serif text-[22px] leading-none font-bold tracking-[-0.015em] text-(--color-accent) italic"
+          className="flex shrink-0 items-center gap-2 font-serif text-[22px] leading-none font-bold tracking-[-0.015em] text-(--color-accent) italic"
         >
+          <Image
+            src="/logo-64.png"
+            alt=""
+            width={28}
+            height={28}
+            priority
+            className="h-7 w-7"
+          />
           Mangia
         </Link>
 

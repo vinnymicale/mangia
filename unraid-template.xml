@@ -10,6 +10,7 @@
   <Name>mangia</Name>
   <Repository>ghcr.io/vinnymicale/mangia:latest</Repository>
   <Registry>https://github.com/vinnymicale/mangia/pkgs/container/mangia</Registry>
+  <Icon>https://raw.githubusercontent.com/vinnymicale/mangia/master/public/logo.png</Icon>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
