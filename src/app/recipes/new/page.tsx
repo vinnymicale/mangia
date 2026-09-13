@@ -4,20 +4,22 @@ import { useState } from 'react'
 import { RecipeForm, EMPTY_RECIPE, type RecipeFormValue } from '@/components/RecipeForm'
 import type { ParsedIngredient } from '@/lib/parsing/types'
 import type { RecipeDraft } from '@/lib/llm/types'
+import { PhotoImportTab, type PhotoImportOutcome } from '@/components/PhotoImportTab'
 import { PageTitle, button, field } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
 type Door = 'choose' | 'form'
-type Tab = 'paste' | 'url'
+type Tab = 'paste' | 'url' | 'photo'
 
 /**
- * The three ways into a recipe. Paste leads because it is the fastest path
- * and the one that needs no network; typing it out is the fallback, so it
- * sits last rather than competing with the two assisted routes.
+ * The assisted ways into a recipe. Paste leads because it is the fastest path
+ * and the one that needs no network; typing it out is the fallback, so it sits
+ * below the tabs rather than competing with them.
  */
 const TABS: { id: Tab; label: string }[] = [
   { id: 'paste', label: 'Paste ingredients' },
   { id: 'url', label: 'Import URL' },
+  { id: 'photo', label: 'From a photo' },
 ]
 
 function draftToForm(draft: RecipeDraft, sourceUrl: string | null): RecipeFormValue {
@@ -39,6 +41,43 @@ function draftToForm(draft: RecipeDraft, sourceUrl: string | null): RecipeFormVa
   }
 }
 
+/**
+ * The card the recipe was read from, kept beside the parse so the two can be
+ * compared without leaving the page. Open to start, because the first thing a
+ * cook does is check the reading against the card; collapsible because once it
+ * is checked it is only in the way.
+ */
+function PhotoSource({ outcome }: { outcome: PhotoImportOutcome }) {
+  return (
+    <div className="space-y-3">
+      <p className="rounded-lg bg-(--color-surface-2) px-4 py-3 text-sm text-(--color-ink-2)">
+        {outcome.method === 'vision'
+          ? 'Read by your configured model. Check it over before saving.'
+          : 'Read with on-device text recognition, which is rougher than a model. Expect to correct it.'}
+      </p>
+
+      <details open className="rounded-lg border border-(--color-border) px-4 py-3">
+        <summary className="cursor-pointer text-sm font-semibold">The photo</summary>
+        {/* eslint-disable-next-line @next/next/no-img-element -- an object URL
+            for a local file, which the image optimiser cannot fetch. */}
+        <img
+          src={outcome.previewUrl}
+          alt="The recipe photo this was read from"
+          className="mt-3 max-h-[28rem] rounded-md"
+        />
+        {outcome.rawText && (
+          <>
+            <p className="mt-4 text-[13px] font-semibold">What was read</p>
+            <pre className="mt-1.5 max-h-56 overflow-auto rounded-md bg-(--color-surface-2) p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+              {outcome.rawText}
+            </pre>
+          </>
+        )}
+      </details>
+    </div>
+  )
+}
+
 export default function NewRecipePage() {
   const [door, setDoor] = useState<Door>('choose')
   const [tab, setTab] = useState<Tab>('paste')
@@ -47,6 +86,8 @@ export default function NewRecipePage() {
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Set only on the photo route; it is what the form shows above itself. */
+  const [photo, setPhoto] = useState<PhotoImportOutcome | null>(null)
 
   async function pasteBlob() {
     const response = await fetch('/api/parse-ingredients', {
@@ -83,19 +124,22 @@ export default function NewRecipePage() {
     return (
       <>
         <PageTitle>New recipe</PageTitle>
-        <RecipeForm initial={initial} />
+        <RecipeForm
+          initial={initial}
+          above={photo && <PhotoSource outcome={photo} />}
+        />
       </>
     )
   }
 
   return (
     <div className="mx-auto max-w-[640px]">
-      <PageTitle lede="Import from a URL, paste an ingredient block, or fill in the details by hand.">
+      <PageTitle lede="Import from a URL, paste an ingredient block, photograph a card, or fill in the details by hand.">
         New recipe
       </PageTitle>
 
-      {/* Tabs rather than stacked cards: the three doors are alternatives, so
-          showing one at a time is closer to how the choice is actually made. */}
+      {/* Tabs rather than stacked cards: the doors are alternatives, so showing
+          one at a time is closer to how the choice is actually made. */}
       <div
         role="tablist"
         aria-label="How to add a recipe"
@@ -178,6 +222,18 @@ export default function NewRecipePage() {
               {error}
             </p>
           )}
+        </section>
+      )}
+
+      {tab === 'photo' && (
+        <section role="tabpanel" id="addpanel-photo" aria-labelledby="addtab-photo">
+          <PhotoImportTab
+            onParsed={(outcome) => {
+              setPhoto(outcome)
+              setInitial(outcome.value)
+              setDoor('form')
+            }}
+          />
         </section>
       )}
 

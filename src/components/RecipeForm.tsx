@@ -20,12 +20,19 @@ export interface RecipeFormValue {
   sourceUrl: string | null
   ingredients: ParsedIngredient[]
   tags: string[]
+  /**
+   * The photo this recipe was read from, base64, when the cook chose to keep
+   * it. Part of the value rather than a separate prop because `save` posts the
+   * whole value, so it rides along with no change to the submit path. Ignored
+   * on an edit: the API drops it on PUT.
+   */
+  photo?: { data: string; mimeType: string } | null
 }
 
 export const EMPTY_RECIPE: RecipeFormValue = {
   title: '', description: null, instructions: '', notes: null, servings: null,
   prepMinutes: null, cookMinutes: null, sourceUrl: null,
-  ingredients: [], tags: [],
+  ingredients: [], tags: [], photo: null,
 }
 
 function toIntOrNull(raw: string): number | null {
@@ -33,7 +40,18 @@ function toIntOrNull(raw: string): number | null {
   return Number.isFinite(value) && value >= 0 ? value : null
 }
 
-export function RecipeForm({ initial }: { initial: RecipeFormValue }) {
+/**
+ * `above` is rendered inside the form, before the first field -- the photo
+ * import shows the original card there so the source stays next to what was
+ * read from it while the parse is corrected.
+ */
+export function RecipeForm({
+  initial,
+  above,
+}: {
+  initial: RecipeFormValue
+  above?: React.ReactNode
+}) {
   const router = useRouter()
   const [value, setValue] = useState(initial)
   const [cleaningUp, setCleaningUp] = useState(false)
@@ -119,6 +137,8 @@ export function RecipeForm({ initial }: { initial: RecipeFormValue }) {
         void save()
       }}
     >
+      {above}
+
       <label className="block max-w-2xl">
         <span className={labelClass}>Title</span>
         <input
