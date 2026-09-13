@@ -27,7 +27,11 @@ export async function PUT(
     )
   }
 
-  await updateRecipe(id, parsed.data)
+  // An edit shares the create schema, but the photo is written once at import
+  // time and never edited afterwards, so it is dropped here rather than
+  // re-saved -- `updateRecipe` has no field for it either way.
+  const { photo: _photo, ...recipe } = parsed.data
+  await updateRecipe(id, recipe)
   return NextResponse.json({ id })
 }
 

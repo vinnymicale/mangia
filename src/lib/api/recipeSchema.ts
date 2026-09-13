@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { PHOTO_MIME_TYPES } from '@/lib/db/photos'
 
 /**
  * The request shape both recipe endpoints accept. POST and PUT take the same
@@ -20,6 +21,18 @@ export const AliasSchema = z.object({
   canonical: z.string().min(1),
 })
 
+/**
+ * The photo the recipe was read from, base64 because the body is JSON.
+ *
+ * The type list comes from storage rather than being restated, so what may be
+ * sent, stored, and served cannot drift apart. Sending a photo is opt-in: the
+ * keep-the-original toggle defaults to off, hence the null default.
+ */
+export const PhotoSchema = z.object({
+  data: z.string(),
+  mimeType: z.enum(PHOTO_MIME_TYPES),
+})
+
 export const RecipeBodySchema = z.object({
   title: z.string().min(1),
   description: z.string().nullable().default(null),
@@ -32,6 +45,7 @@ export const RecipeBodySchema = z.object({
   ingredients: z.array(IngredientSchema).default([]),
   tags: z.array(z.string()).default([]),
   aliases: z.array(AliasSchema).default([]),
+  photo: PhotoSchema.nullable().default(null),
 })
 
 export type RecipeBody = z.infer<typeof RecipeBodySchema>
