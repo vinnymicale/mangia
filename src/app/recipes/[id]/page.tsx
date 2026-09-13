@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { ChefHat, Pencil, Printer } from 'lucide-react'
 import { getRecipe } from '@/lib/db/recipes'
 import { listCookLog } from '@/lib/db/cookLog'
+import { hasRecipePhoto } from '@/lib/db/photos'
 import { BackLink, button, card } from '@/components/ui'
 import { DeleteButton } from '@/components/DeleteButton'
 import { CookHistory } from '@/components/CookHistory'
@@ -41,6 +42,9 @@ export default async function RecipePage({
   if (recipe === null) notFound()
 
   const cookLog = await listCookLog(recipe.id)
+  // Only whether one exists: the bytes are served by their own route, so the
+  // page never carries a photo through the HTML.
+  const photo = await hasRecipePhoto(recipe.id)
 
   return (
     <article>
@@ -185,6 +189,22 @@ export default async function RecipePage({
                 ))}
               </div>
             </div>
+          )}
+          {/* The card this was read from, for the handwriting, the splashes,
+              and whatever the parse could not make out. Collapsed because the
+              typed recipe above is the one being cooked from, and hidden in
+              print for the same reason. */}
+          {photo && (
+            <details className="mt-12 border-t border-(--color-border) pt-8 print:hidden">
+              <summary className="eyebrow cursor-pointer">Original photo</summary>
+              {/* eslint-disable-next-line @next/next/no-img-element -- served
+                  from a route that streams bytes out of the database. */}
+              <img
+                src={`/api/recipes/${recipe.id}/photo`}
+                alt={`The photo ${recipe.title} was read from`}
+                className="mt-4 max-h-[36rem] rounded-lg border border-(--color-border)"
+              />
+            </details>
           )}
           {/* Below the method and the notes: history is what the cook consults
               after deciding to make this again, not while reading it. */}
