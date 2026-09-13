@@ -46,9 +46,11 @@ COPY --from=builder /app/node_modules/zlibjs ./node_modules/zlibjs
 COPY scripts ./scripts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN mkdir -p /data && chown -R node:node /data /app
-USER node
+RUN apk add --no-cache su-exec && mkdir -p /data && chown -R node:node /data /app
 VOLUME ["/data"]
 EXPOSE 3000
 
+# Stays root at container start so the entrypoint can fix ownership of a
+# bind-mounted /data (e.g. an Unraid host path Docker creates as root) before
+# dropping to the unprivileged `node` user to run the app.
 ENTRYPOINT ["./docker-entrypoint.sh"]
