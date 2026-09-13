@@ -52,6 +52,43 @@ Open <http://localhost:3000>.
 All state lives in the `mangia-data` volume at `/data`. Back it up by
 copying that directory while the container is stopped.
 
+A prebuilt image is also published to GHCR on every push to `master`, so you
+don't have to build locally: `ghcr.io/vinnymicale/mangia:latest`.
+
+### Unraid
+
+Use the bundled template so every field — image, WebUI link, port, and all
+variables — is pre-filled. The **Add Container** page's "Template" dropdown
+only lists templates Unraid already has on disk, so first drop the template
+file where it looks for them. On the Unraid box (**Tools → Web Terminal**):
+
+```bash
+wget -O /boot/config/plugins/dockerMan/templates-user/my-mangia.xml \
+  https://raw.githubusercontent.com/vinnymicale/mangia/master/unraid-template.xml
+```
+
+Then **Docker → Add Container**, open the **Template** dropdown, and pick
+**my-mangia** (under "User templates"). Every field populates, including
+every environment variable the app supports — nothing is required, so you can
+click **Apply** immediately for an unconfigured instance, or fill in an LLM
+key first. Point the **Data** path at a real share (it defaults to
+`/mnt/user/appdata/mangia`) so the database survives container rebuilds. All
+of this is editable later from the container's **Edit** screen, and every
+value is also settable from **/settings** in the running app without a
+restart.
+
+#### Environment variables
+
+| Variable | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `LLM_PROVIDER` | no | `gemini` | `gemini` or `openai-compatible` (Ollama, LM Studio, vLLM…). Only needed for URL import, the AI clean-up button, and higher-quality photo reading. |
+| `LLM_API_KEY` | no | — | API key for the chosen provider. Leave blank for an `openai-compatible` endpoint that doesn't require one. |
+| `LLM_MODEL` | no | `gemini-2.5-flash` | Defaults to `gemini-2.5-flash` for gemini, `gpt-4o-mini` for openai-compatible. |
+| `LLM_BASE_URL` | no | — | Only for `openai-compatible`, e.g. `http://192.168.1.10:11434/v1` for Ollama. |
+| `GOOGLE_DRIVE_CREDENTIALS` | no | — | Service account key JSON, or a path to it, for Google Drive backups. Easier to set from **/settings**, which lets you pick the file instead of pasting JSON. |
+| `GOOGLE_DRIVE_FOLDER_ID` | no | — | The Drive folder to upload backups into. Share it with the service account's address. |
+| `GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS` | no | `24` | Hours between Google Drive backups. |
+
 ## Develop
 
 Requires **Node 22 or newer** — `better-sqlite3` declares `engines: >=22` and
