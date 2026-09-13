@@ -10,6 +10,10 @@ out/
 .env.local
 /data/
 test-results/
+# Downloaded by tesseract.js into the working directory the first time a photo
+# is read. A runtime cache, not a dependency: it is fetched again in a fresh
+# container rather than shipped in the image.
+eng.traineddata
 playwright-report/
 src/generated/
 tsconfig.tsbuildinfo

@@ -7,8 +7,15 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || '.next',
   // Ship a self-contained server bundle so the runtime image needs no install.
   output: 'standalone',
-  // Native and adapter packages must stay external; bundling breaks the .node binding.
-  serverExternalPackages: ['@prisma/adapter-better-sqlite3', 'better-sqlite3'],
+  // Native and adapter packages must stay external; bundling breaks the .node
+  // binding. tesseract.js is here for the same reason by a different route: it
+  // resolves its worker script and WASM core by path at runtime, which a bundle
+  // rewrites out from under it.
+  serverExternalPackages: [
+    '@prisma/adapter-better-sqlite3',
+    'better-sqlite3',
+    'tesseract.js',
+  ],
   // Playwright drives the dev server over 127.0.0.1; without this Next blocks
   // its own HMR resources as cross-origin and floods the e2e output.
   allowedDevOrigins: ['127.0.0.1'],

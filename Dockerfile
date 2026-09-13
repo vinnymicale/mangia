@@ -30,6 +30,19 @@ COPY --from=builder /app/prisma ./prisma
 # fails on first query. The Prisma CLI stays out — scripts/migrate.mjs applies
 # migrations through better-sqlite3 instead.
 COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+# The OCR engine, whole. Its recognition runs in a worker the library spawns as
+# a child process by file path, so the tracer sees the entry point and none of
+# what the worker itself requires -- the core's WASM binaries among them. Both
+# packages are copied outright rather than trusting a trace through a spawn.
+COPY --from=builder /app/node_modules/tesseract.js ./node_modules/tesseract.js
+COPY --from=builder /app/node_modules/tesseract.js-core ./node_modules/tesseract.js-core
+# Its runtime dependencies, for the same reason: nothing the worker requires is
+# reachable from the traced entry point. node-fetch, is-url and
+# regenerator-runtime the trace already brought in through the main module.
+COPY --from=builder /app/node_modules/bmp-js ./node_modules/bmp-js
+COPY --from=builder /app/node_modules/idb-keyval ./node_modules/idb-keyval
+COPY --from=builder /app/node_modules/wasm-feature-detect ./node_modules/wasm-feature-detect
+COPY --from=builder /app/node_modules/zlibjs ./node_modules/zlibjs
 COPY scripts ./scripts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
