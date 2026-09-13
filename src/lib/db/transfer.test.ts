@@ -213,4 +213,29 @@ describe('importRecipeDocument', () => {
     expect(result.imported).toBe(1)
     expect(await getRecipePhoto(result.ids[0])).toBeNull()
   })
+
+  it('drops a photo with a type it would not serve but keeps the recipe', async () => {
+    const { importRecipeDocument } = await import('./transfer')
+    const { getRecipePhoto } = await import('./photos')
+
+    const result = await importRecipeDocument({
+      mangia: { version: 1 },
+      recipes: [
+        {
+          title: 'Tampered Backup',
+          instructions: 'Make it.',
+          description: null, sourceUrl: null, prepMinutes: null,
+          cookMinutes: null, servings: null, notes: null,
+          lastCookedAt: null, tags: [], ingredients: [], cookLog: [],
+          photo: {
+            mimeType: 'text/html',
+            data: Buffer.from('<script>alert(1)</script>').toString('base64'),
+          },
+        },
+      ],
+    })
+
+    expect(result.imported).toBe(1)
+    expect(await getRecipePhoto(result.ids[0])).toBeNull()
+  })
 })

@@ -1,5 +1,22 @@
 import { db } from './client'
 
+/**
+ * The only types a photo may be stored or served under.
+ *
+ * This lives with storage rather than in the upload route because the upload
+ * route is not the only writer: restoring a backup calls `setRecipePhoto` with
+ * whatever `mimeType` the JSON file claims. A file naming `text/html` would
+ * otherwise be stored and later served under that type from the app's own
+ * origin, which turns a restore into stored XSS.
+ */
+export const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
+
+export type PhotoMimeType = (typeof PHOTO_MIME_TYPES)[number]
+
+export function isPhotoMimeType(value: string): value is PhotoMimeType {
+  return (PHOTO_MIME_TYPES as readonly string[]).includes(value)
+}
+
 export interface RecipePhoto {
   data: Uint8Array<ArrayBuffer>
   mimeType: string
@@ -15,12 +32,18 @@ export interface RecipePhoto {
  * will not take one that might be shared -- a `SharedArrayBuffer` cannot be
  * handed to the driver safely. A `Buffer` from a request or a base64 decode
  * already satisfies this.
+ *
+ * Throws on a type outside `PHOTO_MIME_TYPES` rather than silently coercing it,
+ * so a corrupt or hostile backup fails loudly at the row that carries it.
  */
 export async function setRecipePhoto(
   recipeId: string,
   data: Uint8Array<ArrayBuffer>,
   mimeType: string,
 ): Promise<void> {
+  if (!isPhotoMimeType(mimeType)) {
+    throw new Error(`Unsupported photo type: ${mimeType}`)
+  }
   await db.recipePhoto.upsert({
     where: { recipeId },
     create: { recipeId, data, mimeType },

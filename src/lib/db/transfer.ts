@@ -1,6 +1,6 @@
 import { db } from './client'
 import { createRecipe } from './recipes'
-import { setRecipePhoto } from './photos'
+import { setRecipePhoto, isPhotoMimeType } from './photos'
 import type { Confidence } from '@/lib/parsing/types'
 
 /**
@@ -232,10 +232,14 @@ export async function importRecipeDocument(doc: ExportDocument): Promise<ImportR
       })
     }
 
+    // A photo whose type is not one we serve is dropped and the recipe kept.
+    // `setRecipePhoto` would throw on it, and losing the rest of someone's
+    // restore over one bad row in a file they cannot edit is the wrong trade.
     if (
       entry.photo &&
       typeof entry.photo.data === 'string' &&
-      typeof entry.photo.mimeType === 'string'
+      typeof entry.photo.mimeType === 'string' &&
+      isPhotoMimeType(entry.photo.mimeType)
     ) {
       await setRecipePhoto(id, Buffer.from(entry.photo.data, 'base64'), entry.photo.mimeType)
     }

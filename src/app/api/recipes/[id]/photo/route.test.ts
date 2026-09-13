@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/lib/db/photos', () => ({ getRecipePhoto: vi.fn() }))
+// Only the database read is stubbed. `isPhotoMimeType` is a pure guard and is
+// the thing under test in the type-fallback case, so it stays real.
+vi.mock('@/lib/db/photos', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/db/photos')>()),
+  getRecipePhoto: vi.fn(),
+}))
 
 import { getRecipePhoto } from '@/lib/db/photos'
 import { GET } from './route'
@@ -45,5 +50,29 @@ describe('GET /api/recipes/[id]/photo', () => {
     const response = await get('abc')
 
     expect(response.status).toBe(404)
+  })
+
+  it('never serves an unexpected type back under its own name', async () => {
+    vi.mocked(getRecipePhoto).mockResolvedValue({
+      data: new Uint8Array([0x3c, 0x21]),
+      mimeType: 'text/html',
+    })
+
+    const response = await get('abc')
+
+    expect(response.headers.get('content-type')).toBe('application/octet-stream')
+  })
+
+  it('sends the headers that stop bytes being treated as a document', async () => {
+    vi.mocked(getRecipePhoto).mockResolvedValue({
+      data: new Uint8Array([1]),
+      mimeType: 'image/jpeg',
+    })
+
+    const response = await get('abc')
+
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(response.headers.get('content-security-policy')).toBe("default-src 'none'; sandbox")
+    expect(response.headers.get('content-disposition')).toBe('inline; filename="photo"')
   })
 })

@@ -67,4 +67,15 @@ describe('setRecipePhoto', () => {
 
     expect(await getRecipePhoto(id)).toBeNull()
   })
+
+  it('refuses a type it would not serve, so a bad backup cannot be stored', async () => {
+    const { setRecipePhoto, getRecipePhoto } = await import('./photos')
+    const id = await seedRecipe('Hostile Card')
+
+    await expect(
+      setRecipePhoto(id, Buffer.from('<script>alert(1)</script>'), 'text/html'),
+    ).rejects.toThrow(/Unsupported photo type/)
+
+    expect(await getRecipePhoto(id)).toBeNull()
+  })
 })

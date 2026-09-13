@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
 import { importFromPhoto } from '@/lib/import/photoImporter'
+import { PHOTO_MIME_TYPES } from '@/lib/db/photos'
 
 /**
  * Formats browsers can reliably canvas-decode and every vision model accepts.
  * HEIC is deliberately absent: it would need a server-side converter.
+ *
+ * Shared with storage rather than restated, so what may be uploaded and what
+ * may be stored and served cannot drift apart.
  */
-const ACCEPTED = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const ACCEPTED = new Set<string>(PHOTO_MIME_TYPES)
 
 /** Generous for a downscaled photo, and a hard stop on an original off a phone. */
 const MAX_BYTES = 10 * 1024 * 1024
