@@ -23,6 +23,11 @@ ENV DATABASE_URL="file:/data/mangia.db"
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+# The standalone output deliberately omits public/, so it has to be copied in
+# alongside it. Without this the logo 404s, and the image optimizer turns that
+# into a 400 ("isn't a valid image") rather than a 404, since what it fetches
+# back from its own server is an HTML error page.
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 # The generated Prisma client is TypeScript, so Next compiles it into the server
 # chunks, so it needs no copying. better-sqlite3 does: the adapter loads it
