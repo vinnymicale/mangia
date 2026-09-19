@@ -5,9 +5,11 @@ import {
   DraftIngredientSchema,
   EXTRACT_RECIPE_PROMPT,
   EXTRACT_RECIPE_FROM_IMAGE_PROMPT,
+  EXTRACT_RECIPE_FROM_VIDEO_PROMPT,
   PARSE_LINES_PROMPT,
   type LlmProvider,
   type RecipeDraft,
+  type VideoSource,
 } from './types'
 import { z } from 'zod'
 
@@ -48,6 +50,29 @@ export class GeminiProvider implements LlmProvider {
           { text: EXTRACT_RECIPE_FROM_IMAGE_PROMPT },
           { inlineData: { mimeType, data: image.toString('base64') } },
         ],
+      },
+      config: { responseMimeType: 'application/json' },
+    })
+    return RecipeDraftSchema.parse(JSON.parse(stripFences(response.text ?? '')))
+  }
+
+  /**
+   * Reads a recipe out of a video.
+   *
+   * A YouTube URL goes over as a `fileData` part, which Gemini fetches and
+   * decodes itself -- no download, no upload, no bytes through this server.
+   * Everything else arrives as bytes and goes inline.
+   */
+  async extractRecipeFromVideo(source: VideoSource): Promise<RecipeDraft> {
+    const media =
+      source.kind === 'url'
+        ? { fileData: { fileUri: source.url, mimeType: 'video/*' } }
+        : { inlineData: { mimeType: source.mimeType, data: source.data.toString('base64') } }
+
+    const response = await this.client.models.generateContent({
+      model: this.model,
+      contents: {
+        parts: [{ text: EXTRACT_RECIPE_FROM_VIDEO_PROMPT }, media],
       },
       config: { responseMimeType: 'application/json' },
     })

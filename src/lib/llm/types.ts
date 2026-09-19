@@ -21,6 +21,17 @@ export const RecipeDraftSchema = z.object({
 
 export type RecipeDraft = z.infer<typeof RecipeDraftSchema>
 
+/**
+ * A video to read, either as a URL the model fetches itself or as bytes.
+ *
+ * Both shapes exist because only YouTube can be handed over as a URL: Gemini
+ * ingests one natively, while an Instagram or TikTok video has to be pulled
+ * down first and passed inline.
+ */
+export type VideoSource =
+  | { kind: 'url'; url: string }
+  | { kind: 'bytes'; data: Buffer; mimeType: string }
+
 export interface LlmProvider {
   readonly name: string
   /** Extracts a structured recipe from freeform page or note text. */
@@ -34,6 +45,15 @@ export interface LlmProvider {
    * than exceptional -- the photo import path catches it and falls back to OCR.
    */
   extractRecipeFromImage(image: Buffer, mimeType: string): Promise<RecipeDraft>
+  /**
+   * Extracts a structured recipe from a cooking video.
+   *
+   * Throws when the configured model cannot watch video, which is most of
+   * them. Like the image method, that is expected rather than exceptional --
+   * the video import path catches it and falls back to whatever the caption
+   * gave it.
+   */
+  extractRecipeFromVideo(source: VideoSource): Promise<RecipeDraft>
 }
 
 export const EXTRACT_RECIPE_PROMPT = `You extract structured recipes from text.
@@ -70,7 +90,29 @@ Rules:
 - Convert fractions to decimals (1/2 becomes 0.5).
 - For a range, use the lower bound.`
 
-export const PARSE_LINES_PROMPT = `You structure recipe ingredient lines.
+export const EXTRACT_RECIPE_FROM_VIDEO_PROMPT = `You extract recipes from cooking videos.
+Return ONLY valid JSON matching this shape:
+{"title":string,"description":string|null,"instructions":string,
+ "servings":number|null,"prepMinutes":number|null,"cookMinutes":number|null,
+ "ingredients":[{"quantity":number|null,"unit":string|null,"ingredient":string,"note":string|null}],
+ "tags":string[]}
+
+Rules:
+- Use what is said and what is shown, including on-screen text and any
+  ingredient list the video displays.
+- Ignore the intro, the sign-off, sponsor reads, and anything about a
+  different dish.
+- Cooks often say "a splash", "a good glug", or nothing at all. Use null for
+  that quantity. Never invent a number to fill the field.
+- Give every step the video performs, in order, even one mentioned only in
+  passing.
+- "instructions" is markdown, one numbered step per line.
+- "ingredient" is the food itself, without quantity, unit, or preparation.
+- "note" holds preparation ("minced", "divided", "room temperature").
+- Convert fractions to decimals (1/2 becomes 0.5).
+- For a range, use the lower bound.`
+
+export const PARSE_LINES_PROMPT =`You structure recipe ingredient lines.
 Return ONLY a JSON array, one object per input line, in the same order:
 [{"quantity":number|null,"unit":string|null,"ingredient":string,"note":string|null}]
 

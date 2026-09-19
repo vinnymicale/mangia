@@ -51,7 +51,10 @@ COPY --from=builder /app/node_modules/zlibjs ./node_modules/zlibjs
 COPY scripts ./scripts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN apk add --no-cache su-exec && mkdir -p /data && chown -R node:node /data /app
+# yt-dlp reads Instagram and TikTok videos, which no model can fetch by URL.
+# Deliberately without ffmpeg: the downloader asks for a single progressive MP4
+# so nothing needs merging, and ffmpeg would roughly double the image.
+RUN apk add --no-cache su-exec yt-dlp && mkdir -p /data && chown -R node:node /data /app
 VOLUME ["/data"]
 EXPOSE 3000
 

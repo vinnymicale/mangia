@@ -78,6 +78,25 @@ function PhotoSource({ outcome }: { outcome: PhotoImportOutcome }) {
   )
 }
 
+/** How a video import went, so the form can set expectations before saving. */
+type VideoMethod = 'video-caption' | 'video-model'
+
+/**
+ * The two video rungs produce drafts of quite different character: a caption
+ * the poster wrote is exact but often partial, while a watched video covers
+ * every step and guesses at amounts the cook never said aloud. Naming which
+ * one ran tells the cook where to look first.
+ */
+function VideoSource({ method }: { method: VideoMethod }) {
+  return (
+    <p className="rounded-lg bg-(--color-surface-2) px-4 py-3 text-sm text-(--color-ink-2)">
+      {method === 'video-caption'
+        ? 'Read from the post’s caption. Steps the caption left out will be missing.'
+        : 'Read by watching the video. Amounts the cook never said aloud are estimates — check them.'}
+    </p>
+  )
+}
+
 export default function NewRecipePage() {
   const [door, setDoor] = useState<Door>('choose')
   const [tab, setTab] = useState<Tab>('paste')
@@ -88,6 +107,8 @@ export default function NewRecipePage() {
   const [error, setError] = useState<string | null>(null)
   /** Set only on the photo route; it is what the form shows above itself. */
   const [photo, setPhoto] = useState<PhotoImportOutcome | null>(null)
+  /** Set only when the imported URL turned out to be a video. */
+  const [videoMethod, setVideoMethod] = useState<VideoMethod | null>(null)
 
   async function pasteBlob() {
     const response = await fetch('/api/parse-ingredients', {
@@ -111,6 +132,10 @@ export default function NewRecipePage() {
       })
       const body = await response.json()
       if (!response.ok) throw new Error(body.error ?? 'Import failed.')
+      const method = body.method as string
+      setVideoMethod(
+        method === 'video-caption' || method === 'video-model' ? method : null,
+      )
       setInitial(draftToForm(body.draft as RecipeDraft, body.sourceUrl))
       setDoor('form')
     } catch (caught) {
@@ -126,7 +151,13 @@ export default function NewRecipePage() {
         <PageTitle>New recipe</PageTitle>
         <RecipeForm
           initial={initial}
-          above={photo && <PhotoSource outcome={photo} />}
+          above={
+            photo ? (
+              <PhotoSource outcome={photo} />
+            ) : videoMethod ? (
+              <VideoSource method={videoMethod} />
+            ) : null
+          }
         />
       </>
     )
@@ -212,7 +243,9 @@ export default function NewRecipePage() {
           </div>
           <p className="mt-3.5 text-[13px] leading-[1.55] text-(--color-ink-2)">
             Structured recipe data is used when the site publishes it; otherwise
-            the page is read by your configured model.
+            the page is read by your configured model. A YouTube, Instagram or
+            TikTok link is read as a video — its caption first, the video
+            itself if the caption comes up short.
           </p>
           {error && (
             <p

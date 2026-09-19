@@ -48,7 +48,7 @@ describe('POST /api/clean-ingredients', () => {
     ])
     vi.mocked(getProvider).mockResolvedValue({
       name: 'test', extractRecipe: vi.fn(), parseIngredientLines,
-      extractRecipeFromImage: vi.fn(),
+      extractRecipeFromImage: vi.fn(), extractRecipeFromVideo: vi.fn(),
     })
 
     const response = await cleanRoute(
@@ -70,6 +70,7 @@ describe('POST /api/clean-ingredients', () => {
       name: 'test',
       extractRecipe: vi.fn(),
       extractRecipeFromImage: vi.fn(),
+      extractRecipeFromVideo: vi.fn(),
       parseIngredientLines: vi.fn().mockRejectedValue(new Error('quota exceeded')),
     })
     const response = await cleanRoute(

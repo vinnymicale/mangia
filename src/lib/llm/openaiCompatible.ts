@@ -96,6 +96,17 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     return RecipeDraftSchema.parse(JSON.parse(stripFences(raw)))
   }
 
+  /**
+   * Always throws. The chat-completions API has no video content part, and no
+   * backend behind this provider accepts one; pretending otherwise would send
+   * a request that can only fail slowly and expensively.
+   */
+  async extractRecipeFromVideo(): Promise<RecipeDraft> {
+    throw new Error(
+      'This model cannot watch video. Configure Gemini to import from a video URL.',
+    )
+  }
+
   async parseIngredientLines(lines: string[]): Promise<ParsedIngredient[]> {
     const raw = await this.generate(PARSE_LINES_PROMPT, lines.join('\n'))
     const payload = JSON.parse(stripFences(raw))
