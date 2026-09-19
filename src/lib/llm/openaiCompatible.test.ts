@@ -51,3 +51,15 @@ describe('OpenAiCompatibleProvider.extractRecipeFromImage', () => {
     ).rejects.toThrow(/LLM request failed: 400/)
   })
 })
+
+describe('OpenAiCompatibleProvider.extractRecipeFromVideo', () => {
+  // The ladder catches this and falls back to the caption, so the throw is the
+  // contract -- and the message is what the cook is told to do about it.
+  it('throws a message naming the provider that can', async () => {
+    const provider = new OpenAiCompatibleProvider('http://localhost:1234/v1', 'key', 'model')
+
+    await expect(
+      provider.extractRecipeFromVideo({ kind: 'url', url: 'https://youtu.be/x' }),
+    ).rejects.toThrow(/cannot watch video.*Gemini/is)
+  })
+})

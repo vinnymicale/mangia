@@ -7,6 +7,7 @@ import {
   PARSE_LINES_PROMPT,
   type LlmProvider,
   type RecipeDraft,
+  type VideoSource,
 } from './types'
 import { z } from 'zod'
 
@@ -101,7 +102,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
    * backend behind this provider accepts one; pretending otherwise would send
    * a request that can only fail slowly and expensively.
    */
-  async extractRecipeFromVideo(): Promise<RecipeDraft> {
+  async extractRecipeFromVideo(_source: VideoSource): Promise<RecipeDraft> {
     throw new Error(
       'This model cannot watch video. Configure Gemini to import from a video URL.',
     )
