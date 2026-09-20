@@ -30,6 +30,14 @@ function provider(overrides: Partial<LlmProvider> = {}): LlmProvider {
   } as LlmProvider
 }
 
+/** What a vision model returns when it read the photo and found no recipe. */
+const EMPTY_DRAFT: RecipeDraft = {
+  ...DRAFT,
+  title: 'Photo',
+  instructions: '',
+  ingredients: [],
+}
+
 const image = Buffer.from('photo-bytes')
 
 describe('importFromPhoto', () => {
@@ -90,6 +98,30 @@ describe('importFromPhoto', () => {
     expect(result.method).toBe('ocr')
     expect(result.draft.title).toBe('')
     expect(result.draft.ingredients).toEqual([])
+  })
+
+  // A vision draft with nothing in it is the same thing as a vision call that
+  // threw -- a rung that did not pay off -- and OCR may still read the card.
+  it('falls back to OCR when the vision model finds no recipe', async () => {
+    const runOcr = vi.fn(async () => CARD)
+    const p = provider({ extractRecipeFromImage: vi.fn(async () => EMPTY_DRAFT) })
+
+    const result = await importFromPhoto(image, 'image/jpeg', { provider: p, runOcr })
+
+    expect(result.method).toBe('ocr')
+    expect(result.draft.title).toBe("Aunt Ida's Cake")
+  })
+
+  // Distinct from the bad-scan test above: there OCR read marks worth showing
+  // the user, who can type the rest. Here it read nothing whatsoever, so there
+  // is nothing to show and a blank form would be a no-op with no explanation.
+  it('reports a failure when OCR reads nothing legible', async () => {
+    await expect(
+      importFromPhoto(image, 'image/jpeg', {
+        provider: null,
+        runOcr: async () => '   \n  ',
+      }),
+    ).rejects.toThrow(/nothing legible/i)
   })
 
   it('surfaces an OCR engine failure, since there is nothing left to fall back to', async () => {

@@ -1,6 +1,7 @@
 import { getProvider } from '@/lib/llm'
 import { runOcr as defaultRunOcr } from '@/lib/ocr/tesseract'
 import { structureOcrText, type OcrDraft } from './ocrStructure'
+import { isEmptyDraft } from './emptyDraft'
 import type { LlmProvider } from '@/lib/llm/types'
 
 export interface PhotoImportResult {
@@ -64,7 +65,11 @@ export async function importFromPhoto(
   if (provider !== null) {
     try {
       const draft = await provider.extractRecipeFromImage(image, mimeType)
-      return { draft: withNotes(draft), method: 'vision' }
+      // A draft with nothing in it is a rung that did not pay off, exactly
+      // like a thrown call, and OCR may still get something off the card.
+      if (!isEmptyDraft(draft)) {
+        return { draft: withNotes(draft), method: 'vision' }
+      }
     } catch {
       // Deliberately swallowed: falling back to OCR is the designed response,
       // and a user who gets a usable draft does not need to hear about it.
@@ -79,6 +84,15 @@ export async function importFromPhoto(
     // OCR is the last resort, so its failure is the one the user must see.
     const detail = error instanceof Error ? error.message : String(error)
     throw new Error(`That photo could not be read: ${detail}`)
+  }
+
+  // Not `isEmptyDraft`, and not a test for words either: a scan that produced
+  // only marks still gets the form, because `rawText` puts what the engine read
+  // in front of the user and they can type the rest. Only a read that produced
+  // nothing whatsoever has nothing to show, and that is the blank form with no
+  // explanation this check exists to stop.
+  if (text.trim() === '') {
+    throw new Error('That photo could not be read: nothing legible was found in it.')
   }
 
   return { draft: structureOcrText(text), method: 'ocr', rawText: text }

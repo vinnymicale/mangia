@@ -2,6 +2,7 @@ import { getProvider } from '@/lib/llm'
 import { classifyUrl, type VideoPlatform } from './videoUrl'
 import { fetchVideoMetadata, type VideoMetadata } from './videoMetadata'
 import { downloadVideo as defaultDownloadVideo, type DownloadOutcome } from './videoDownload'
+import { isEmptyDraft } from './emptyDraft'
 import type { LlmProvider, RecipeDraft } from '@/lib/llm/types'
 
 export interface VideoImportResult {
@@ -56,6 +57,12 @@ async function resolveProvider(deps: VideoImportDeps): Promise<LlmProvider | nul
   }
 }
 
+/**
+ * The video was fetched and read, and held no recipe. Distinct from a download
+ * failure: nothing went wrong technically, there was just nothing there.
+ */
+const EMPTY_VIDEO_FAILURE = 'the video was read but no recipe could be found in it'
+
 const DOWNLOAD_MESSAGES: Record<Exclude<DownloadOutcome, { ok: true }>['reason'], string> = {
   unavailable: 'yt-dlp is not installed, so the video itself could not be read',
   failed: 'the video could not be downloaded, which usually means it is private or login-walled',
@@ -99,7 +106,12 @@ export async function importFromVideo(
   if (isSubstantialCaption(meta.caption)) {
     try {
       const draft = await provider.extractRecipe(captionDocument(meta))
-      return { draft, method: 'video-caption', sourceUrl: url }
+      // An empty draft is a rung that did not pay off, exactly like a throw.
+      // Returning one is how an import came back blank and still reported
+      // success, so it falls through to the video instead.
+      if (!isEmptyDraft(draft)) {
+        return { draft, method: 'video-caption', sourceUrl: url }
+      }
     } catch {
       // Deliberately swallowed: the video is the better source anyway, and
       // this only means the shortcut did not pay off.
@@ -113,19 +125,25 @@ export async function importFromVideo(
   try {
     if (platform === 'youtube') {
       const draft = await provider.extractRecipeFromVideo({ kind: 'url', url })
-      return { draft, method: 'video-model', sourceUrl: url }
-    }
-
-    const outcome = await download(url)
-    if (!outcome.ok) {
-      videoFailure = DOWNLOAD_MESSAGES[outcome.reason]
+      if (!isEmptyDraft(draft)) {
+        return { draft, method: 'video-model', sourceUrl: url }
+      }
+      videoFailure = EMPTY_VIDEO_FAILURE
     } else {
-      const draft = await provider.extractRecipeFromVideo({
-        kind: 'bytes',
-        data: outcome.data,
-        mimeType: outcome.mimeType,
-      })
-      return { draft, method: 'video-model', sourceUrl: url }
+      const outcome = await download(url)
+      if (!outcome.ok) {
+        videoFailure = DOWNLOAD_MESSAGES[outcome.reason]
+      } else {
+        const draft = await provider.extractRecipeFromVideo({
+          kind: 'bytes',
+          data: outcome.data,
+          mimeType: outcome.mimeType,
+        })
+        if (!isEmptyDraft(draft)) {
+          return { draft, method: 'video-model', sourceUrl: url }
+        }
+        videoFailure = EMPTY_VIDEO_FAILURE
+      }
     }
   } catch (error) {
     videoFailure = error instanceof Error ? error.message : String(error)
@@ -135,7 +153,9 @@ export async function importFromVideo(
   if (meta.caption.trim() !== '') {
     try {
       const draft = await provider.extractRecipe(captionDocument(meta))
-      return { draft, method: 'video-caption', sourceUrl: url }
+      if (!isEmptyDraft(draft)) {
+        return { draft, method: 'video-caption', sourceUrl: url }
+      }
     } catch {
       // Falls through to the video failure, which is the more useful message.
     }

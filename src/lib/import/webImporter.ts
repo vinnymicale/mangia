@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio'
 import { extractJsonLdRecipe } from './jsonld'
 import { assertWebUrl, guardedFetch } from './fetchGuard'
+import { isEmptyDraft } from './emptyDraft'
 import { getProvider } from '@/lib/llm'
 import type { LlmProvider, RecipeDraft } from '@/lib/llm/types'
 
@@ -56,12 +57,20 @@ export async function importFromUrl(
   }
 
   const structured = extractJsonLdRecipe(html)
-  if (structured) {
+  // A `Recipe` block needs only a name to parse, and sites that stamp the
+  // markup on every page produce plenty with nothing else in them. The prose
+  // may still hold the recipe, so an empty block defers to the model.
+  if (structured && !isEmptyDraft(structured)) {
     return { draft: structured, method: 'jsonld', sourceUrl: url }
   }
 
   const provider = deps.provider ?? (await getProvider())
   const text = htmlToText(html).slice(0, MAX_TEXT_CHARS)
   const draft = await provider.extractRecipe(text)
+  // The last rung. Returning an empty draft here is how an import came back
+  // blank and still reported success, leaving the user a form and no reason.
+  if (isEmptyDraft(draft)) {
+    throw new Error(`No recipe could be found in ${url}.`)
+  }
   return { draft, method: 'llm', sourceUrl: url }
 }

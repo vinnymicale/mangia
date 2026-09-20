@@ -11,6 +11,11 @@ const JSONLD_PAGE = `<html><head><script type="application/ld+json">${JSON.strin
   },
 )}</script></head><body>ignored</body></html>`
 
+/** A `Recipe` block with a name and nothing to cook from. */
+const HOLLOW_JSONLD_PAGE = `<html><head><script type="application/ld+json">${JSON.stringify(
+  { '@type': 'Recipe', name: 'Structured Stew' },
+)}</script></head><body><h1>Grandma Cookies</h1><p>2 cups flour</p></body></html>`
+
 const PLAIN_PAGE = `<html><head><style>.x{color:red}</style></head>
   <body><script>var a=1</script><h1>Grandma Cookies</h1>
   <p>2 cups flour</p><p>Bake at 350.</p></body></html>`
@@ -23,6 +28,18 @@ function fakeProvider(draft: RecipeDraft): LlmProvider {
     extractRecipeFromVideo: vi.fn(async () => draft),
     parseIngredientLines: vi.fn(async () => []),
   }
+}
+
+/** What a model returns when it read the page and found no recipe in it. */
+const EMPTY_DRAFT: RecipeDraft = {
+  title: 'Cookie Blog',
+  description: null,
+  instructions: '',
+  servings: null,
+  prepMinutes: null,
+  cookMinutes: null,
+  ingredients: [],
+  tags: [],
 }
 
 const LLM_DRAFT: RecipeDraft = {
@@ -80,6 +97,31 @@ describe('importFromUrl', () => {
     expect(result.method).toBe('llm')
     expect(result.draft.title).toBe('Grandma Cookies')
     expect(provider.extractRecipe).toHaveBeenCalledOnce()
+  })
+
+  // A page can carry a Recipe block with a name and nothing else -- a common
+  // shape on sites that stamp the markup on every page, recipe or not. The
+  // prose may still hold the recipe, so the structured rung defers.
+  it('climbs past a json-ld block with nothing to cook from', async () => {
+    const provider = fakeProvider(LLM_DRAFT)
+    const result = await importFromUrl('https://example.com/cookies', {
+      fetchHtml: async () => HOLLOW_JSONLD_PAGE,
+      provider,
+    })
+    expect(result.method).toBe('llm')
+    expect(result.draft.title).toBe('Grandma Cookies')
+    expect(provider.extractRecipe).toHaveBeenCalledOnce()
+  })
+
+  // Returning this draft is how an import came back blank and still called
+  // itself a success; the model rung is the last one, so it throws.
+  it('reports a failure when the model finds no recipe on the page', async () => {
+    await expect(
+      importFromUrl('https://example.com/blog', {
+        fetchHtml: async () => PLAIN_PAGE,
+        provider: fakeProvider(EMPTY_DRAFT),
+      }),
+    ).rejects.toThrow(/no recipe could be found/i)
   })
 
   it('rejects a non-http url', async () => {

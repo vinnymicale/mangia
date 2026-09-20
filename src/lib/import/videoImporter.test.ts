@@ -15,6 +15,16 @@ const DRAFT: RecipeDraft = {
   tags: [],
 }
 
+/** What a model returns when it read the source and found no recipe in it. */
+const EMPTY_DRAFT: RecipeDraft = {
+  ...DRAFT,
+  title: 'TikTok',
+  instructions: '',
+  ingredients: [],
+  servings: null,
+  cookMinutes: null,
+}
+
 function fakeProvider(overrides: Partial<LlmProvider> = {}): LlmProvider {
   return {
     name: 'fake',
@@ -153,5 +163,53 @@ describe('importFromVideo', () => {
     const text = vi.mocked(d.provider.extractRecipe).mock.calls[0][0]
     expect(text).toContain('Cacio e Pepe')
     expect(text).toContain(RECIPE_CAPTION)
+  })
+
+  // A caption long enough to try that yields nothing is, from the ladder's
+  // point of view, the same as one whose extraction threw: a rung that did
+  // not pay off. Returning it is how an import came back blank and called
+  // itself a success.
+  it('climbs past a caption that extracts nothing', async () => {
+    const d = deps({
+      metadata: meta(RECIPE_CAPTION),
+      download: { ok: true, data: Buffer.from('mp4'), mimeType: 'video/mp4' },
+      provider: fakeProvider({ extractRecipe: vi.fn(async () => EMPTY_DRAFT) }),
+    })
+
+    const result = await importFromVideo('https://www.tiktok.com/@a/video/1', d)
+
+    expect(result.method).toBe('video-model')
+    expect(result.draft).toEqual(DRAFT)
+    expect(d.provider.extractRecipe).toHaveBeenCalledOnce()
+  })
+
+  it('falls back to the caption when the video itself extracts nothing', async () => {
+    const d = deps({
+      metadata: meta('Best carbonara ever! 3 eggs and guanciale.'),
+      download: { ok: true, data: Buffer.from('mp4'), mimeType: 'video/mp4' },
+      provider: fakeProvider({
+        extractRecipeFromVideo: vi.fn(async () => EMPTY_DRAFT),
+      }),
+    })
+
+    const result = await importFromVideo('https://www.tiktok.com/@a/video/1', d)
+
+    expect(result.method).toBe('video-caption')
+    expect(result.draft).toEqual(DRAFT)
+  })
+
+  it('reports a failure when every rung comes back empty', async () => {
+    const d = deps({
+      metadata: meta(RECIPE_CAPTION),
+      download: { ok: true, data: Buffer.from('mp4'), mimeType: 'video/mp4' },
+      provider: fakeProvider({
+        extractRecipe: vi.fn(async () => EMPTY_DRAFT),
+        extractRecipeFromVideo: vi.fn(async () => EMPTY_DRAFT),
+      }),
+    })
+
+    await expect(
+      importFromVideo('https://www.tiktok.com/@a/video/1', d),
+    ).rejects.toThrow(/no recipe could be found/i)
   })
 })
