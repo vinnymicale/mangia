@@ -29,12 +29,16 @@ describe('classifyUrl', () => {
     expect(classifyUrl(url)).toEqual({ kind: 'video', platform: 'tiktok', id })
   })
 
-  it('treats a tiktok short link as tiktok even though the id is opaque', () => {
-    expect(classifyUrl('https://vm.tiktok.com/ZMabcdef/')).toEqual({
-      kind: 'video',
-      platform: 'tiktok',
-      id: 'ZMabcdef',
-    })
+  // Every share link TikTok's own sheet hands out. None of these carries a
+  // video id, and all of them resolve to one -- so the opaque token stands in.
+  it.each([
+    ['https://vm.tiktok.com/ZMabcdef/', 'ZMabcdef'],
+    ['https://vt.tiktok.com/ZSabcdef/', 'ZSabcdef'],
+    // The "Copy link" form on the mobile app, on the main host.
+    ['https://www.tiktok.com/t/ZTU32NUxB/', 'ZTU32NUxB'],
+    ['https://tiktok.com/t/ZTU32NUxB', 'ZTU32NUxB'],
+  ])('treats the tiktok short link %s as a video', (url, id) => {
+    expect(classifyUrl(url)).toEqual({ kind: 'video', platform: 'tiktok', id })
   })
 
   // The article path is the default, so a misclassification here would break

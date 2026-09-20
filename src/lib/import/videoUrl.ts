@@ -28,11 +28,22 @@ function instagramId(url: URL): string | null {
 }
 
 function tiktokId(url: URL): string | null {
-  if (hostIs(url.hostname, 'vm.tiktok.com')) {
-    // A short link's path is an opaque redirect token rather than a video id.
-    // It is still the only handle we have, and yt-dlp resolves it either way.
+  const host = url.hostname.toLowerCase()
+
+  // A short link's path is an opaque redirect token rather than a video id. It
+  // is still the only handle we have, and yt-dlp resolves it either way.
+  //
+  // Three shapes carry one, and the share sheet hands out all three: the vm.
+  // and vt. hosts, and a /t/ path on the main host -- which is what the mobile
+  // app's "Copy link" produces, so it is the form a user is most likely to
+  // paste. Missing it read the redirect stub as an ordinary page, which has no
+  // recipe in it, and the import silently came back empty.
+  if (hostIs(host, 'vm.tiktok.com') || hostIs(host, 'vt.tiktok.com')) {
     return url.pathname.slice(1).split('/')[0] || null
   }
+  const short = /^\/t\/([^/]+)/.exec(url.pathname)
+  if (short) return short[1]
+
   const match = /^\/@[^/]+\/video\/(\d+)/.exec(url.pathname)
   return match ? match[1] : null
 }
