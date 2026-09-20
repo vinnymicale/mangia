@@ -1,10 +1,16 @@
 <?xml version="1.0"?>
 <!--
   Unraid template for mangia. Add it via the Docker tab → Add Container → paste
-  the raw URL of this file into "Template" (or drop it in
-  /boot/config/plugins/dockerMan/templates-user/). Every field below is
-  pre-filled and every one is optional — the app works with no configuration
-  at all, just add it and go.
+  the raw URL of this file into "Template", then hit Apply. Every field below
+  is pre-filled and every one is optional — the app works with no
+  configuration at all, just add it and go.
+
+  Don't copy this file into /boot/config/plugins/dockerMan/templates-user/
+  yourself. Unraid saves your installation there when you hit Apply, as
+  my-Mangia.xml, and that saved copy is what holds your settings. A
+  hand-placed file sits alongside it as an unowned source template, and the
+  defaults below — the host port especially — can come back over your own
+  values on a later edit.
 -->
 <Container version="2">
   <Name>mangia</Name>
