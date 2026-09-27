@@ -17,6 +17,7 @@ const LINKS = [
   { href: "/lists", label: "Lists" },
   { href: "/diary", label: "Diary" },
   { href: "/staples", label: "Staples" },
+  { href: "/ingredients", label: "Ingredients" },
   { href: "/settings", label: "Settings" },
 ];
 
