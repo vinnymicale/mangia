@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getRecipe } from '@/lib/db/recipes'
+import { getOverride, type NutritionOverride } from '@/lib/db/nutrition'
 import { RecipeForm, type RecipeFormValue } from '@/components/RecipeForm'
 import { BackLink, PageTitle } from '@/components/ui'
 
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 type StoredRecipe = NonNullable<Awaited<ReturnType<typeof getRecipe>>>
 
-function toFormValue(recipe: StoredRecipe): RecipeFormValue {
+function toFormValue(recipe: StoredRecipe, nutritionOverride: NutritionOverride | null): RecipeFormValue {
   return {
     id: recipe.id,
     title: recipe.title,
@@ -28,6 +29,7 @@ function toFormValue(recipe: StoredRecipe): RecipeFormValue {
       // Saved rows have already been reviewed by a human.
       confidence: 'high' as const,
     })),
+    nutritionOverride,
   }
 }
 
@@ -39,12 +41,13 @@ export default async function EditRecipePage({
   const { id } = await params
   const recipe = await getRecipe(id)
   if (recipe === null) notFound()
+  const override = await getOverride(recipe.id)
 
   return (
     <>
       <BackLink href={`/recipes/${recipe.id}`}>{recipe.title}</BackLink>
       <PageTitle>Edit recipe</PageTitle>
-      <RecipeForm initial={toFormValue(recipe)} />
+      <RecipeForm initial={toFormValue(recipe, override)} />
     </>
   )
 }

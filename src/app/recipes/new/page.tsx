@@ -38,6 +38,7 @@ function draftToForm(draft: RecipeDraft, sourceUrl: string | null): RecipeFormVa
       rawText: [row.quantity ?? '', row.unit ?? '', row.ingredient].join(' ').trim(),
       confidence: 'high' as const,
     })),
+    nutritionOverride: draft.nutrition ? { ...draft.nutrition, note: 'From source page' } : null,
   }
 }
 

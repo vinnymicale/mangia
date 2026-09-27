@@ -7,6 +7,10 @@ import { UnknownIngredientPrompt, type AliasChoice } from './UnknownIngredientPr
 import { button, field, label as labelClass } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import type { ParsedIngredient } from '@/lib/parsing/types'
+import type { NutritionOverride } from '@/lib/db/nutrition'
+import { fromDraft, toDraft } from '@/lib/nutrition/format'
+import { hasAnyNutrient } from '@/lib/nutrition/types'
+import { NutrientFields } from './nutrition/NutrientFields'
 
 export interface RecipeFormValue {
   id?: string
@@ -27,12 +31,17 @@ export interface RecipeFormValue {
    * on an edit: the API drops it on PUT.
    */
   photo?: { data: string; mimeType: string } | null
+  /**
+   * Per-serving values that replace the estimate. Sent on every save, so
+   * blanking all seven on an edit clears a stored override.
+   */
+  nutritionOverride?: NutritionOverride | null
 }
 
 export const EMPTY_RECIPE: RecipeFormValue = {
   title: '', description: null, instructions: '', notes: null, servings: null,
   prepMinutes: null, cookMinutes: null, sourceUrl: null,
-  ingredients: [], tags: [], photo: null,
+  ingredients: [], tags: [], photo: null, nutritionOverride: null,
 }
 
 function toIntOrNull(raw: string): number | null {
@@ -59,6 +68,8 @@ export function RecipeForm({
   const [aliases, setAliases] = useState<AliasChoice[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nutrition, setNutrition] = useState(() => toDraft(initial.nutritionOverride ?? null))
+  const [nutritionNote, setNutritionNote] = useState(initial.nutritionOverride?.note ?? '')
 
   function patch(next: Partial<RecipeFormValue>) {
     setValue((current) => ({ ...current, ...next }))
@@ -92,6 +103,15 @@ export function RecipeForm({
   }
 
   async function save() {
+    const nutrients = fromDraft(nutrition)
+    if (!nutrients) {
+      setError('Each nutrition value must be a number of 0 or more.')
+      return
+    }
+    const nutritionOverride = hasAnyNutrient(nutrients)
+      ? { ...nutrients, note: nutritionNote.trim() === '' ? null : nutritionNote.trim() }
+      : null
+
     setSaving(true)
     setError(null)
     try {
@@ -117,7 +137,7 @@ export function RecipeForm({
         {
           method: value.id ? 'PUT' : 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ ...value, aliases }),
+          body: JSON.stringify({ ...value, nutritionOverride, aliases }),
         },
       )
       const body = await response.json()
@@ -245,6 +265,29 @@ export function RecipeForm({
           }
         />
       </label>
+
+      {/* Only for a recipe whose real figures are known -- a label, a source
+          page. Left empty, the recipe page estimates from the ingredients. */}
+      <details>
+        <summary className={cn(labelClass, 'cursor-pointer select-none')}>
+          Nutrition (optional)
+        </summary>
+        <div className="mt-3 max-w-2xl space-y-3">
+          <p className="text-sm text-(--color-ink-2)">
+            Per serving. Filled in, these replace the estimate from the ingredients.
+          </p>
+          <NutrientFields value={nutrition} onChange={setNutrition} />
+          <label className="block">
+            <span className="text-xs font-semibold text-(--color-ink-2)">Note</span>
+            <input
+              className={cn(field, 'mt-1 px-2.5 py-1.5 text-sm')}
+              placeholder="From the package label"
+              value={nutritionNote}
+              onChange={(event) => setNutritionNote(event.target.value)}
+            />
+          </label>
+        </div>
+      </details>
 
       <UnknownIngredientPrompt unknown={unknown} choices={aliases} onChange={setAliases} />
 

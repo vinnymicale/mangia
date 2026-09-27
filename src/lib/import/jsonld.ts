@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio'
 import { parseIngredientLine } from '@/lib/parsing/parseIngredient'
 import type { RecipeDraft } from '@/lib/llm/types'
+import { EMPTY_NUTRIENTS, type Nutrients } from '@/lib/nutrition/types'
 
 /** Converts an ISO 8601 duration such as PT2H30M to whole minutes. */
 export function parseIsoDuration(value: unknown): number | null {
@@ -55,6 +56,47 @@ export function flattenInstructions(value: unknown): string {
   // A single prose blob arrives as one "step"; keep it unnumbered.
   if (steps.length === 1) return steps[0]
   return steps.map((step, i) => `${i + 1}. ${step}`).join('\n')
+}
+
+const NUTRITION_FIELDS = {
+  kcal: 'calories',
+  protein: 'proteinContent',
+  carbs: 'carbohydrateContent',
+  fat: 'fatContent',
+  fiber: 'fiberContent',
+  sugar: 'sugarContent',
+  sodium: 'sodiumContent',
+} as const satisfies Record<keyof Nutrients, string>
+
+/** The leading number of "240 calories" or "12 g", or of a bare number. */
+function leadingNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : null
+  if (typeof value !== 'string') return null
+  const match = /^\s*(\d+(?:[.,]\d+)?)/.exec(value)
+  return match ? Number(match[1].replace(',', '.')) : null
+}
+
+/**
+ * schema.org NutritionInformation as per-serving values. Sodium is stored in
+ * mg, so "1.2 g" becomes 1200. A block with no calories and no macros is
+ * treated as absent: fiber alone would make a misleading override.
+ */
+export function parseNutrition(value: unknown): Nutrients | null {
+  const node = Array.isArray(value) ? value[0] : value
+  if (typeof node !== 'object' || node === null) return null
+  const record = node as Record<string, unknown>
+
+  const result: Nutrients = { ...EMPTY_NUTRIENTS }
+  for (const [key, field] of Object.entries(NUTRITION_FIELDS) as [keyof Nutrients, string][]) {
+    result[key] = leadingNumber(record[field])
+  }
+  const sodium = record.sodiumContent
+  if (result.sodium !== null && typeof sodium === 'string' && /\d\s*g\b/i.test(sodium)) {
+    result.sodium = Math.round(result.sodium * 1000)
+  }
+
+  const usable = [result.kcal, result.protein, result.carbs, result.fat].some((n) => n !== null)
+  return usable ? result : null
 }
 
 function isRecipeNode(node: unknown): node is Record<string, unknown> {
@@ -128,6 +170,7 @@ export function extractJsonLdRecipe(html: string): RecipeDraft | null {
         }
       }),
       tags: [],
+      nutrition: parseNutrition(recipe.nutrition),
     }
   }
 

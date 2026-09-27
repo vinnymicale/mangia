@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { ParsedIngredient } from '@/lib/parsing/types'
-import type { Nutrients } from '@/lib/nutrition/types'
+import { NutrientsSchema, type Nutrients } from '@/lib/nutrition/types'
 import type { FoodMatchItem, UnitWeightItem } from './nutrition'
 
 export const DraftIngredientSchema = z.object({
@@ -19,6 +19,11 @@ export const RecipeDraftSchema = z.object({
   cookMinutes: z.number().int().nonnegative().nullable().default(null),
   ingredients: z.array(DraftIngredientSchema).default([]),
   tags: z.array(z.string()).default([]),
+  /**
+   * Per-serving values the source page printed, when it did. Only the web
+   * importer fills this; it becomes the recipe's override, not an estimate.
+   */
+  nutrition: NutrientsSchema.nullable().optional(),
 })
 
 export type RecipeDraft = z.infer<typeof RecipeDraftSchema>
