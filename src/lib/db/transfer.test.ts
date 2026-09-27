@@ -239,3 +239,96 @@ describe('importRecipeDocument', () => {
     expect(await getRecipePhoto(result.ids[0])).toBeNull()
   })
 })
+
+describe('nutrition in transfer', () => {
+  const BARE = {
+    description: null, sourceUrl: null, prepMinutes: null, cookMinutes: null,
+    servings: 2, notes: null, lastCookedAt: null, tags: [], cookLog: [],
+  }
+  const VALUES = { kcal: 40, protein: 1.1, carbs: 9.3, fat: 0.1, fiber: 1.7, sugar: 4.2, sodium: 4 }
+
+  it('round-trips ingredient nutrition, unit weights and a recipe override', async () => {
+    const { createRecipe } = await import('./recipes')
+    const { resolveIngredient } = await import('./ingredients')
+    const { upsertIngredientNutrition, upsertUnitWeight, setOverride, getOverride, getNutritionData } =
+      await import('./nutrition')
+    const { exportAll, importRecipeDocument } = await import('./transfer')
+    const { db } = await import('./client')
+
+    const id = await createRecipe({
+      title: 'Onion Soup', instructions: 'Slow.', ingredients: [
+        { quantity: 2, unit: null, ingredient: 'transfer onion', note: null, rawText: '2 transfer onion', confidence: 'high' },
+      ], tags: [],
+    })
+    const onion = await resolveIngredient('transfer onion')
+    await upsertIngredientNutrition(onion.id, { ...VALUES, source: 'usda', fdcId: 170000, fdcDescription: 'Onions, raw' })
+    await upsertUnitWeight(onion.id, null, 110, 'usda')
+    await upsertUnitWeight(onion.id, 'cup', null, 'unmatched')
+    await setOverride(id, { ...VALUES, kcal: 320, note: 'From the label' })
+
+    const doc = await exportAll()
+    const exported = doc.ingredients!.find((row) => row.name === 'transfer onion')!
+    expect(exported.nutrition).toMatchObject({ kcal: 40, source: 'usda', fdcId: 170000 })
+    expect(exported.unitWeights).toContainEqual({ unit: null, grams: 110, source: 'usda' })
+    expect(doc.recipes.find((r) => r.title === 'Onion Soup')!.nutritionOverride)
+      .toEqual({ ...VALUES, kcal: 320, note: 'From the label' })
+
+    // Wipe the ingredient's data so the import has gaps to fill.
+    await db.ingredientNutrition.deleteMany({ where: { ingredientId: onion.id } })
+    await db.ingredientUnitWeight.deleteMany({ where: { ingredientId: onion.id } })
+
+    const result = await importRecipeDocument({
+      ...doc, recipes: doc.recipes.filter((r) => r.title === 'Onion Soup'),
+    })
+
+    expect(await getOverride(result.ids[0])).toEqual({ ...VALUES, kcal: 320, note: 'From the label' })
+    const restored = await getNutritionData([onion.id])
+    expect(restored.nutrition.get(onion.id)).toMatchObject({ kcal: 40, source: 'usda', fdcDescription: 'Onions, raw' })
+    // The unmatched cup stays open for this install to look up itself.
+    expect(restored.weights.get(onion.id)).toEqual([{ unit: null, grams: 110, source: 'usda' }])
+  })
+
+  it('never overwrites known data but replaces unmatched rows', async () => {
+    const { resolveIngredient } = await import('./ingredients')
+    const { upsertIngredientNutrition, upsertUnitWeight, getNutritionData } = await import('./nutrition')
+    const { importRecipeDocument } = await import('./transfer')
+
+    const kept = await resolveIngredient('transfer kept')
+    const gap = await resolveIngredient('transfer gap')
+    await upsertIngredientNutrition(kept.id, { ...VALUES, kcal: 99, source: 'manual', fdcId: null, fdcDescription: null })
+    await upsertUnitWeight(kept.id, 'cup', 200, 'manual')
+    await upsertIngredientNutrition(gap.id, { ...VALUES, source: 'unmatched', fdcId: null, fdcDescription: null })
+    await upsertUnitWeight(gap.id, 'cup', null, 'unmatched')
+
+    const incoming = { ...VALUES, kcal: 55, source: 'ai' as const, fdcId: null, fdcDescription: null }
+    await importRecipeDocument({
+      mangia: { version: 1 },
+      recipes: [],
+      ingredients: [
+        { name: 'Transfer Kept', nutrition: incoming, unitWeights: [{ unit: 'cup', grams: 150, source: 'ai' }] },
+        { name: 'transfer gap', nutrition: incoming, unitWeights: [{ unit: 'cup', grams: 150, source: 'ai' }] },
+        { name: 'transfer new', nutrition: { ...incoming, kcal: 5000 }, unitWeights: [{ unit: 'cup', grams: -1, source: 'ai' }] },
+      ],
+    })
+
+    const newer = await resolveIngredient('transfer new')
+    const data = await getNutritionData([kept.id, gap.id, newer.id])
+    expect(data.nutrition.get(kept.id)).toMatchObject({ kcal: 99, source: 'manual' })
+    expect(data.weights.get(kept.id)).toEqual([{ unit: 'cup', grams: 200, source: 'manual' }])
+    expect(data.nutrition.get(gap.id)).toMatchObject({ kcal: 55, source: 'ai' })
+    expect(data.weights.get(gap.id)).toEqual([{ unit: 'cup', grams: 150, source: 'ai' }])
+    // Implausible values are dropped rather than stored.
+    expect(data.nutrition.get(newer.id)).toBeUndefined()
+    expect(data.weights.get(newer.id)).toBeUndefined()
+  })
+
+  it('reads a file with no nutrition fields at all', async () => {
+    const { importRecipeDocument } = await import('./transfer')
+    const { getOverride } = await import('./nutrition')
+    const result = await importRecipeDocument({
+      mangia: { version: 1 },
+      recipes: [{ ...BARE, title: 'Old File', instructions: 'Make it.', ingredients: [] }],
+    })
+    expect(await getOverride(result.ids[0])).toBeNull()
+  })
+})

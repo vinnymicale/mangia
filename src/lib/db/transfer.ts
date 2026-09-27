@@ -1,7 +1,16 @@
 import { db } from './client'
 import { createRecipe } from './recipes'
 import { setRecipePhoto, isPhotoMimeType } from './photos'
+import { resolveIngredientsIn, normalizeIngredientName } from './ingredients'
+import {
+  getNutritionData, setOverride, upsertIngredientNutrition, upsertUnitWeight,
+  type IngredientNutritionData, type NutritionOverride, type UnitWeight,
+} from './nutrition'
 import type { Confidence } from '@/lib/parsing/types'
+import {
+  NUTRITION_SOURCES, NutrientsSchema, NutritionOverrideSchema, pickNutrients,
+  validateNutrientsPer100g, validateUnitWeight, type NutritionSource,
+} from '@/lib/nutrition/types'
 
 /**
  * Bumped only when a change would make an older file unreadable. Readers accept
@@ -48,11 +57,24 @@ export interface ExportedRecipe {
   ingredients: ExportedIngredient[]
   cookLog: ExportedCook[]
   photo?: ExportedPhoto | null
+  /** Per-serving values the cook entered. Optional on read, like `photo`. */
+  nutritionOverride?: NutritionOverride | null
+}
+
+/**
+ * What the app knows about one ingredient's nutrition, keyed by name for the
+ * same reason recipes carry no ids. Only whole-corpus exports write these.
+ */
+export interface ExportedIngredientNutrition {
+  name: string
+  nutrition: IngredientNutritionData | null
+  unitWeights: UnitWeight[]
 }
 
 export interface ExportDocument {
   mangia: { version: number; exportedAt?: string }
   recipes: ExportedRecipe[]
+  ingredients?: ExportedIngredientNutrition[]
 }
 
 /** A single-recipe export is the same document with exactly one recipe in it. */
@@ -65,6 +87,7 @@ const RECIPE_INCLUDE = {
   tags: { include: { tag: true } },
   cookLogs: { orderBy: { cookedAt: 'desc' } },
   photo: true,
+  nutritionOverride: true,
 } as const
 
 type RecipeRow = Awaited<
@@ -106,7 +129,25 @@ function serialize(row: RecipeRow): ExportedRecipe {
           mimeType: row.photo.mimeType,
         }
       : null,
+    nutritionOverride: row.nutritionOverride
+      ? { ...pickNutrients(row.nutritionOverride), note: row.nutritionOverride.note }
+      : null,
   }
+}
+
+/** Every ingredient with a nutrition or weight row, by name. */
+async function exportIngredientNutrition(): Promise<ExportedIngredientNutrition[]> {
+  const ingredients = await db.ingredient.findMany({
+    where: { OR: [{ nutrition: { isNot: null } }, { unitWeights: { some: {} } }] },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  })
+  const { nutrition, weights } = await getNutritionData(ingredients.map((row) => row.id))
+  return ingredients.map((row) => ({
+    name: row.name,
+    nutrition: nutrition.get(row.id) ?? null,
+    unitWeights: weights.get(row.id) ?? [],
+  }))
 }
 
 /** One recipe, in the same envelope as a full archive so both import alike. */
@@ -131,6 +172,7 @@ export async function exportAll(): Promise<ExportDocument> {
   return {
     mangia: { version: EXPORT_VERSION, exportedAt: new Date().toISOString() },
     recipes: rows.map(serialize),
+    ingredients: await exportIngredientNutrition(),
   }
 }
 
@@ -244,6 +286,9 @@ export async function importRecipeDocument(doc: ExportDocument): Promise<ImportR
       await setRecipePhoto(id, Buffer.from(entry.photo.data, 'base64'), entry.photo.mimeType)
     }
 
+    const override = NutritionOverrideSchema.safeParse(entry.nutritionOverride)
+    if (override.success) await setOverride(id, override.data)
+
     // Restored from the file rather than recomputed: a recipe can carry a
     // lastCookedAt from before the log existed, with no entry to derive it from.
     const lastCookedAt = readDate(entry.lastCookedAt)
@@ -252,5 +297,67 @@ export async function importRecipeDocument(doc: ExportDocument): Promise<ImportR
     }
   }
 
+  if (Array.isArray(doc.ingredients)) await importIngredientNutrition(doc.ingredients)
+
   return { imported: ids.length, skipped, ids }
+}
+
+function isSource(value: unknown): value is NutritionSource {
+  return (NUTRITION_SOURCES as readonly unknown[]).includes(value)
+}
+
+/** A stored row may be replaced only when nothing is there or the app gave up. */
+function isGap(existing: { source: NutritionSource } | undefined): boolean {
+  return existing === undefined || existing.source === 'unmatched'
+}
+
+/**
+ * Restores ingredient nutrition, filling gaps only. What this database already
+ * knows -- a USDA match, a cook's correction -- is at least as current as a
+ * backup, so it wins. `unmatched` entries in the file are skipped: they carry
+ * no values, and leaving the gap open lets this install try the lookup itself.
+ * Anything malformed or implausible is dropped quietly, as a bad photo is.
+ */
+async function importIngredientNutrition(entries: unknown[]): Promise<void> {
+  const valid = entries.filter(
+    (entry): entry is ExportedIngredientNutrition =>
+      entry !== null &&
+      typeof entry === 'object' &&
+      typeof (entry as ExportedIngredientNutrition).name === 'string' &&
+      normalizeIngredientName((entry as ExportedIngredientNutrition).name) !== '',
+  )
+  if (valid.length === 0) return
+
+  const resolved = await resolveIngredientsIn(db, valid.map((entry) => entry.name))
+  const ingredientIds = valid.map((entry) => resolved.get(normalizeIngredientName(entry.name))!.id)
+  const existing = await getNutritionData(ingredientIds)
+
+  for (const [index, entry] of valid.entries()) {
+    const ingredientId = ingredientIds[index]
+
+    const nutrition = entry.nutrition
+    if (nutrition && isSource(nutrition.source) && nutrition.source !== 'unmatched' &&
+        isGap(existing.nutrition.get(ingredientId))) {
+      const values = NutrientsSchema.safeParse(nutrition)
+      if (values.success && validateNutrientsPer100g(values.data)) {
+        await upsertIngredientNutrition(ingredientId, {
+          ...values.data,
+          source: nutrition.source,
+          fdcId: typeof nutrition.fdcId === 'number' ? nutrition.fdcId : null,
+          fdcDescription: typeof nutrition.fdcDescription === 'string' ? nutrition.fdcDescription : null,
+        })
+      }
+    }
+
+    const stored = existing.weights.get(ingredientId) ?? []
+    for (const weight of Array.isArray(entry.unitWeights) ? entry.unitWeights : []) {
+      if (weight === null || typeof weight !== 'object') continue
+      const unit = typeof weight.unit === 'string' && weight.unit !== '' ? weight.unit : null
+      if (!isSource(weight.source) || weight.source === 'unmatched') continue
+      const grams = weight.source === 'none' ? null : weight.grams
+      if (grams !== null && (typeof grams !== 'number' || !validateUnitWeight(grams))) continue
+      if (!isGap(stored.find((row) => row.unit === unit))) continue
+      await upsertUnitWeight(ingredientId, unit, grams, weight.source)
+    }
+  }
 }
