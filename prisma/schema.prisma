@@ -8,24 +8,25 @@ datasource db {
 }
 
 model Recipe {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   title        String
   description  String?
   sourceUrl    String?
   prepMinutes  Int?
   cookMinutes  Int?
   servings     Int?
-  instructions String   @default("")
+  instructions String    @default("")
   notes        String?
   lastCookedAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  ingredients RecipeIngredient[]
-  tags        RecipeTag[]
-  itemSources ShoppingItemSource[]
-  cookLogs    CookLog[]
-  photo       RecipePhoto?
+  ingredients       RecipeIngredient[]
+  tags              RecipeTag[]
+  itemSources       ShoppingItemSource[]
+  cookLogs          CookLog[]
+  photo             RecipePhoto?
+  nutritionOverride RecipeNutritionOverride?
 
   @@index([title])
   @@index([createdAt])
@@ -44,6 +45,27 @@ model RecipePhoto {
   data      Bytes
   mimeType  String
   createdAt DateTime @default(now())
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+}
+
+/**
+ * Per-serving nutrition the cook (or the source page) gave for a recipe. When
+ * present it wins over the per-ingredient estimate, which is still computed
+ * for the breakdown.
+ */
+model RecipeNutritionOverride {
+  id        String   @id @default(cuid())
+  recipeId  String   @unique
+  kcal      Float?
+  protein   Float?
+  carbs     Float?
+  fat       Float?
+  fiber     Float?
+  sugar     Float?
+  sodium    Float?
+  note      String?
+  updatedAt DateTime @updatedAt
 
   recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 }
@@ -74,8 +96,58 @@ model Ingredient {
   recipeIngredients RecipeIngredient[]
   shoppingItems     ShoppingListItem[]
   pantryStaple      PantryStaple?
+  nutrition         IngredientNutrition?
+  unitWeights       IngredientUnitWeight[]
 
   @@index([name])
+}
+
+/**
+ * What 100 g of an ingredient contains, resolved once and shared by every
+ * recipe that uses it. Sodium is mg, the rest grams.
+ *
+ * `source` is usda | ai | manual | none | unmatched. `none` is the cook saying
+ * "leave it blank" and is never asked about again; `unmatched` is the app
+ * having tried and failed, and shows as a gap. No row at all means nobody has
+ * tried yet, which is what lets the resolver retry after an outage.
+ */
+model IngredientNutrition {
+  id             String   @id @default(cuid())
+  ingredientId   String   @unique
+  kcal           Float?
+  protein        Float?
+  carbs          Float?
+  fat            Float?
+  fiber          Float?
+  sugar          Float?
+  sodium         Float?
+  source         String
+  fdcId          Int?
+  fdcDescription String?
+  updatedAt      DateTime @updatedAt
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+}
+
+/**
+ * How many grams one of `unit` of an ingredient weighs: "1 cup flour = 125 g".
+ *
+ * `unit` is canonical, or '' for a bare count ("2 onions"). The empty string
+ * rather than null because SQLite treats NULLs as distinct in a unique index,
+ * which would let the bare-count row be inserted twice; the data layer
+ * translates to null at the boundary.
+ */
+model IngredientUnitWeight {
+  id           String   @id @default(cuid())
+  ingredientId String
+  unit         String
+  grams        Float?
+  source       String
+  updatedAt    DateTime @updatedAt
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([ingredientId, unit])
 }
 
 model IngredientAlias {
