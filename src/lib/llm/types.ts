@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import type { ParsedIngredient } from '@/lib/parsing/types'
+import type { Nutrients } from '@/lib/nutrition/types'
+import type { FoodMatchItem, UnitWeightItem } from './nutrition'
 
 export const DraftIngredientSchema = z.object({
   quantity: z.number().nullable().default(null),
@@ -54,6 +56,15 @@ export interface LlmProvider {
    * gave it.
    */
   extractRecipeFromVideo(source: VideoSource): Promise<RecipeDraft>
+  /**
+   * Picks, for each ingredient, the USDA candidate that is the same food, or
+   * null. One call covers a whole recipe. The result lines up with `items`.
+   */
+  matchFoods(items: FoodMatchItem[]): Promise<(number | null)[]>
+  /** Grams in one of each unit ("cup" of flour, a bare-count onion), or null. */
+  estimateUnitWeights(items: UnitWeightItem[]): Promise<(number | null)[]>
+  /** A per-100 g estimate to pre-fill the manual form; never stored unsaved. */
+  estimateNutrition(name: string): Promise<Nutrients>
 }
 
 export const EXTRACT_RECIPE_PROMPT = `You extract structured recipes from text.

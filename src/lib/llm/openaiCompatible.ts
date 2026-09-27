@@ -10,6 +10,19 @@ import {
   type VideoSource,
 } from './types'
 import { z } from 'zod'
+import {
+  ESTIMATE_NUTRITION_PROMPT,
+  ESTIMATE_UNIT_WEIGHTS_PROMPT,
+  MATCH_FOODS_PROMPT,
+  matchFoodsMessage,
+  parseMatchFoods,
+  parseNutrition,
+  parseUnitWeights,
+  unitWeightsMessage,
+  type FoodMatchItem,
+  type UnitWeightItem,
+} from './nutrition'
+import type { Nutrients } from '@/lib/nutrition/types'
 
 function stripFences(text: string): string {
   return text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim()
@@ -124,5 +137,21 @@ export class OpenAiCompatibleProvider implements LlmProvider {
       rawText: lines[i] ?? p.ingredient,
       confidence: 'high' as const,
     }))
+  }
+
+  async matchFoods(items: FoodMatchItem[]): Promise<(number | null)[]> {
+    if (items.length === 0) return []
+    const raw = await this.generate(MATCH_FOODS_PROMPT, matchFoodsMessage(items))
+    return parseMatchFoods(raw, items)
+  }
+
+  async estimateUnitWeights(items: UnitWeightItem[]): Promise<(number | null)[]> {
+    if (items.length === 0) return []
+    const raw = await this.generate(ESTIMATE_UNIT_WEIGHTS_PROMPT, unitWeightsMessage(items))
+    return parseUnitWeights(raw, items)
+  }
+
+  async estimateNutrition(name: string): Promise<Nutrients> {
+    return parseNutrition(await this.generate(ESTIMATE_NUTRITION_PROMPT, name))
   }
 }

@@ -63,3 +63,19 @@ describe('OpenAiCompatibleProvider.extractRecipeFromVideo', () => {
     ).rejects.toThrow(/cannot watch video.*Gemini/is)
   })
 })
+
+describe('OpenAiCompatibleProvider nutrition methods', () => {
+  it('estimates unit weights with a json_object request', async () => {
+    const fetchMock = stubFetch({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '{"grams":[110]}' } }] }),
+    } as unknown as Response)
+
+    const provider = new OpenAiCompatibleProvider('http://localhost:1234/v1', 'key', 'm')
+    expect(await provider.estimateUnitWeights([{ name: 'onion', unit: null }])).toEqual([110])
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.response_format).toEqual({ type: 'json_object' })
+    expect(body.messages.at(-1).content).toContain('onion')
+  })
+})

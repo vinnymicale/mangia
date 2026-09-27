@@ -32,6 +32,9 @@ function fakeProvider(overrides: Partial<LlmProvider> = {}): LlmProvider {
     extractRecipeFromImage: vi.fn(async () => DRAFT),
     extractRecipeFromVideo: vi.fn(async () => DRAFT),
     parseIngredientLines: vi.fn(async () => []),
+    matchFoods: vi.fn(),
+    estimateUnitWeights: vi.fn(),
+    estimateNutrition: vi.fn(),
     ...overrides,
   }
 }

@@ -97,3 +97,25 @@ describe('GeminiProvider.extractRecipeFromVideo', () => {
     ).rejects.toThrow()
   })
 })
+
+describe('GeminiProvider nutrition methods', () => {
+  it('matches foods for a whole recipe in one call', async () => {
+    const provider = new GeminiProvider('key', 'gemini-test')
+    const generateContent = stubClient(provider, '{"matches":[7]}')
+
+    const result = await provider.matchFoods([
+      { name: 'butter', candidates: [{ fdcId: 7, description: 'Butter, salted' }] },
+    ])
+
+    expect(result).toEqual([7])
+    expect(generateContent).toHaveBeenCalledTimes(1)
+    expect(generateContent.mock.calls[0][0].contents).toContain('Butter, salted')
+  })
+
+  it('makes no call for an empty batch', async () => {
+    const provider = new GeminiProvider('key', 'gemini-test')
+    const generateContent = stubClient(provider, '{}')
+    expect(await provider.estimateUnitWeights([])).toEqual([])
+    expect(generateContent).not.toHaveBeenCalled()
+  })
+})

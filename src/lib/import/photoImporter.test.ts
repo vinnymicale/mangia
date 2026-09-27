@@ -26,6 +26,9 @@ function provider(overrides: Partial<LlmProvider> = {}): LlmProvider {
     extractRecipe: vi.fn(),
     parseIngredientLines: vi.fn(),
     extractRecipeFromImage: vi.fn(async () => DRAFT),
+    matchFoods: vi.fn(),
+    estimateUnitWeights: vi.fn(),
+    estimateNutrition: vi.fn(),
     ...overrides,
   } as LlmProvider
 }

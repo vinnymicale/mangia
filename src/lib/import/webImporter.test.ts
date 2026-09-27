@@ -27,6 +27,9 @@ function fakeProvider(draft: RecipeDraft): LlmProvider {
     extractRecipeFromImage: vi.fn(async () => draft),
     extractRecipeFromVideo: vi.fn(async () => draft),
     parseIngredientLines: vi.fn(async () => []),
+    matchFoods: vi.fn(),
+    estimateUnitWeights: vi.fn(),
+    estimateNutrition: vi.fn(),
   }
 }
 
