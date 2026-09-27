@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { PHOTO_MIME_TYPES } from '@/lib/db/photos'
+import { NutritionOverrideSchema } from '@/lib/nutrition/types'
 
 /**
  * The request shape both recipe endpoints accept. POST and PUT take the same
@@ -46,6 +47,12 @@ export const RecipeBodySchema = z.object({
   tags: z.array(z.string()).default([]),
   aliases: z.array(AliasSchema).default([]),
   photo: PhotoSchema.nullable().default(null),
+  /**
+   * Per-serving values the cook typed or the source page printed. On edit,
+   * absent leaves the stored override alone and null clears it, so a client
+   * that knows nothing of nutrition cannot wipe one by omission.
+   */
+  nutritionOverride: NutritionOverrideSchema.nullable().optional(),
 })
 
 export type RecipeBody = z.infer<typeof RecipeBodySchema>

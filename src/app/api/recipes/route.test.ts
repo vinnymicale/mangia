@@ -73,3 +73,20 @@ describe('POST /api/recipes', () => {
     expect(response.status).toBe(201)
   })
 })
+
+describe('POST /api/recipes with nutritionOverride', () => {
+  it('stores the override given with a new recipe', async () => {
+    const { POST } = await import('./route')
+    const { getOverride } = await import('@/lib/db/nutrition')
+
+    const response = await POST(post({ ...BASE, nutritionOverride: { kcal: 640, note: 'From source page' } }))
+
+    const { id } = await response.json()
+    expect(await getOverride(id)).toMatchObject({ kcal: 640, note: 'From source page' })
+  })
+
+  it('rejects an override with no values', async () => {
+    const { POST } = await import('./route')
+    expect((await POST(post({ ...BASE, nutritionOverride: { note: 'x' } }))).status).toBe(400)
+  })
+})

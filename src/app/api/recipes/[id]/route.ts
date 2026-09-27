@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { updateRecipe, deleteRecipe, getRecipe } from '@/lib/db/recipes'
 import { RecipeBodySchema } from '@/lib/api/recipeSchema'
+import { clearOverride, setOverride } from '@/lib/db/nutrition'
 
 export async function GET(
   _request: Request,
@@ -30,8 +31,10 @@ export async function PUT(
   // An edit shares the create schema, but the photo is written once at import
   // time and never edited afterwards, so it is dropped here rather than
   // re-saved -- `updateRecipe` has no field for it either way.
-  const { photo: _photo, ...recipe } = parsed.data
+  const { photo: _photo, nutritionOverride, ...recipe } = parsed.data
   await updateRecipe(id, recipe)
+  if (nutritionOverride === null) await clearOverride(id)
+  else if (nutritionOverride) await setOverride(id, nutritionOverride)
   return NextResponse.json({ id })
 }
 

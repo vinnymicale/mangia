@@ -99,3 +99,13 @@ export function validateNutrientsPer100g(n: Nutrients): boolean {
 export function validateUnitWeight(grams: number): boolean {
   return Number.isFinite(grams) && grams > 0 && grams <= 5000
 }
+
+/**
+ * A recipe's per-serving override as a request carries it. An override with
+ * no values at all would hide the estimate behind nothing, so it is refused;
+ * clearing is its own request.
+ */
+export const NutritionOverrideSchema = NutrientsSchema.extend({
+  note: z.string().trim().max(200).nullable().default(null)
+    .transform((note) => (note === '' ? null : note)),
+}).refine(hasAnyNutrient, { message: 'Give at least one value.' })

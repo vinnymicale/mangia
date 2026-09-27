@@ -123,3 +123,89 @@ export async function clearOverride(recipeId: string): Promise<boolean> {
   const { count } = await db.recipeNutritionOverride.deleteMany({ where: { recipeId } })
   return count > 0
 }
+
+/**
+ * Removes an ingredient's weights of the given sources. A re-match to another
+ * USDA food drops the portions taken from the old one, so the resolver fills
+ * them again from the new; the cook's own weights are kept.
+ */
+export async function deleteUnitWeightsBySource(
+  ingredientId: string,
+  sources: NutritionSource[],
+): Promise<void> {
+  await db.ingredientUnitWeight.deleteMany({ where: { ingredientId, source: { in: sources } } })
+}
+
+export async function ingredientExists(id: string): Promise<boolean> {
+  return (await db.ingredient.count({ where: { id } })) > 0
+}
+
+export interface IngredientNutritionRow {
+  id: string
+  name: string
+  recipeCount: number
+  /** Null when nothing has been looked up yet. */
+  nutrition: IngredientNutritionData | null
+  weights: UnitWeight[]
+}
+
+/**
+ * `gaps` is what the app tried and failed at -- an unmatched profile or
+ * weight -- which is what the cook is asked to fill. `empty` is never looked
+ * up at all.
+ */
+export type IngredientFilter = 'all' | 'gaps' | 'empty'
+
+/**
+ * Every ingredient a recipe uses or that carries nutrition data, by name. An
+ * ingredient only ever seen on a shopping list has nothing to estimate and is
+ * left out.
+ */
+export async function listIngredientNutrition(
+  filter: IngredientFilter = 'all',
+): Promise<IngredientNutritionRow[]> {
+  const rows = await db.ingredient.findMany({
+    where: {
+      OR: [{ recipeIngredients: { some: {} } }, { nutrition: { isNot: null } }],
+    },
+    include: {
+      nutrition: true,
+      unitWeights: true,
+      recipeIngredients: { select: { recipeId: true } },
+    },
+    orderBy: { name: 'asc' },
+  })
+
+  const list = rows.map((row): IngredientNutritionRow => ({
+    id: row.id,
+    name: row.name,
+    // A recipe listing an ingredient twice still counts once.
+    recipeCount: new Set(row.recipeIngredients.map((ri) => ri.recipeId)).size,
+    nutrition: row.nutrition
+      ? {
+          ...pickNutrients(row.nutrition),
+          source: row.nutrition.source as NutritionSource,
+          fdcId: row.nutrition.fdcId,
+          fdcDescription: row.nutrition.fdcDescription,
+        }
+      : null,
+    weights: row.unitWeights
+      .map((w) => ({ unit: fromDbUnit(w.unit), grams: w.grams, source: w.source as NutritionSource }))
+      .sort((a, b) => (a.unit ?? '').localeCompare(b.unit ?? '')),
+  }))
+
+  if (filter === 'gaps') {
+    return list.filter((row) =>
+      row.nutrition?.source === 'unmatched' || row.weights.some((w) => w.source === 'unmatched'))
+  }
+  if (filter === 'empty') return list.filter((row) => row.nutrition === null)
+  return list
+}
+
+/** One ingredient's stored profile and weights, as the ingredient routes answer with. */
+export async function getIngredientNutrition(
+  ingredientId: string,
+): Promise<{ nutrition: IngredientNutritionData | null; weights: UnitWeight[] }> {
+  const { nutrition, weights } = await getNutritionData([ingredientId])
+  return { nutrition: nutrition.get(ingredientId) ?? null, weights: weights.get(ingredientId) ?? [] }
+}

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRecipe } from '@/lib/db/recipes'
 import { setRecipePhoto } from '@/lib/db/photos'
+import { setOverride } from '@/lib/db/nutrition'
 import { RecipeBodySchema } from '@/lib/api/recipeSchema'
 
 export async function POST(request: Request) {
@@ -16,8 +17,9 @@ export async function POST(request: Request) {
   // transaction as the save -- a failed save leaves no orphan alias behind.
   // The photo does not: `createRecipe` takes a `RecipeInput`, which has no
   // room for bytes, so it is split off and written after the recipe exists.
-  const { photo, ...recipe } = parsed.data
+  const { photo, nutritionOverride, ...recipe } = parsed.data
   const id = await createRecipe(recipe)
+  if (nutritionOverride) await setOverride(id, nutritionOverride)
 
   if (photo !== null) {
     // A photo is a nicety; the recipe the cook just typed is not. Losing the
