@@ -35,10 +35,11 @@ test('both pages are reachable from the nav', async ({ page }) => {
 // value coming back proves it was actually persisted and re-read.
 test('a changed backup interval survives a reload without a restart', async ({ page }) => {
   await page.goto('/settings')
+  const backups = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Backups' }) })
 
   const interval = page.getByLabel('Back up every')
   await interval.fill('7')
-  await page.getByRole('button', { name: 'Save' }).nth(1).click()
+  await backups.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Saved. Backups are scheduled from these values from now on.')).toBeVisible()
 
   await page.reload()
@@ -46,5 +47,5 @@ test('a changed backup interval survives a reload without a restart', async ({ p
 
   // Put it back, since the e2e database persists across runs.
   await page.getByLabel('Back up every').fill('24')
-  await page.getByRole('button', { name: 'Save' }).nth(1).click()
+  await backups.getByRole('button', { name: 'Save' }).click()
 })
