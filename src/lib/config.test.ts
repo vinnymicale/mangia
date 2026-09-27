@@ -10,7 +10,7 @@ let scratch: string
 const ENV_KEYS = [
   'LLM_PROVIDER', 'LLM_API_KEY', 'LLM_MODEL', 'LLM_BASE_URL',
   'GOOGLE_DRIVE_CREDENTIALS', 'GOOGLE_DRIVE_FOLDER_ID',
-  'GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS',
+  'GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS', 'USDA_API_KEY', 'USDA_BASE_URL',
 ]
 
 const KEY_JSON = JSON.stringify({
@@ -160,6 +160,39 @@ describe('describeConfig never exposes a secret', () => {
     expect(view.llm.apiKey.source).toBe('env')
     expect(view.llm.model.source).toBe('db')
     expect(view.llm.provider.source).toBe('default')
+  })
+})
+
+describe('usda', () => {
+  it('has no key and the public host by default', async () => {
+    const { resolveConfig } = await import('./config')
+    expect((await resolveConfig()).usda).toEqual({
+      apiKey: null,
+      baseUrl: 'https://api.nal.usda.gov/fdc',
+    })
+  })
+
+  it('reads the key from a row or the environment, and the host from the environment', async () => {
+    process.env.USDA_API_KEY = 'env-usda'
+    process.env.USDA_BASE_URL = 'http://127.0.0.1:9/fdc'
+    const { resolveConfig } = await import('./config')
+    expect((await resolveConfig()).usda).toEqual({
+      apiKey: 'env-usda',
+      baseUrl: 'http://127.0.0.1:9/fdc',
+    })
+    const { setSetting } = await import('./db/settings')
+    await setSetting('usda.apiKey', 'db-usda')
+    expect((await resolveConfig()).usda.apiKey).toBe('db-usda')
+  })
+
+  it('masks the key and refuses a mask back', async () => {
+    const { setSetting } = await import('./db/settings')
+    await setSetting('usda.apiKey', 'usda-secret-wxyz')
+    const { describeConfig, applySettings } = await import('./config')
+    const view = await describeConfig()
+    expect(view.usda.apiKey).toEqual({ set: true, mask: '••••••••wxyz', source: 'db' })
+    expect(JSON.stringify(view)).not.toContain('usda-secret')
+    await expect(applySettings({ 'usda.apiKey': '••••••••wxyz' })).rejects.toThrow(/mask/)
   })
 })
 

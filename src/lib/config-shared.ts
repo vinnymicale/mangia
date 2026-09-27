@@ -18,6 +18,7 @@ export const SETTING_KEYS = [
   'drive.folderId',
   'drive.intervalHours',
   'drive.keepCount',
+  'usda.apiKey',
 ] as const
 
 export type SettingKey = (typeof SETTING_KEYS)[number]

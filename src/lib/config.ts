@@ -29,11 +29,17 @@ const ENV_FALLBACK: Partial<Record<SettingKey, string>> = {
   'drive.credentials': 'GOOGLE_DRIVE_CREDENTIALS',
   'drive.folderId': 'GOOGLE_DRIVE_FOLDER_ID',
   'drive.intervalHours': 'GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS',
+  'usda.apiKey': 'USDA_API_KEY',
 }
 
 /** Keys whose value must never be returned to the client in full. */
-const SECRET_KEYS = new Set<SettingKey>(['llm.apiKey', 'drive.credentials'])
+const SECRET_KEYS = new Set<SettingKey>(['llm.apiKey', 'drive.credentials', 'usda.apiKey'])
 
+/**
+ * FoodData Central's host. Environment only: it exists so tests can point the
+ * client at a server that is not there, and nobody needs it on the page.
+ */
+const USDA_BASE_URL = 'https://api.nal.usda.gov/fdc'
 
 const MODEL_DEFAULTS: Record<ProviderKind, string> = {
   gemini: 'gemini-2.5-flash',
@@ -75,6 +81,11 @@ export interface ResolvedConfig {
     problem: string | null
     configured: boolean
   }
+  usda: {
+    /** Null means the client falls back to DEMO_KEY. */
+    apiKey: string | null
+    baseUrl: string
+  }
 }
 
 export interface MaskedValue {
@@ -97,6 +108,9 @@ export interface DescribedConfig {
     keepCount: { value: number; source: Source }
     problem: string | null
     configured: boolean
+  }
+  usda: {
+    apiKey: MaskedValue
   }
 }
 
@@ -197,6 +211,10 @@ export async function resolveConfig(): Promise<ResolvedConfig> {
       problem,
       configured: key !== null,
     },
+    usda: {
+      apiKey: all['usda.apiKey'].value,
+      baseUrl: process.env.USDA_BASE_URL?.trim() || USDA_BASE_URL,
+    },
   }
 }
 
@@ -220,6 +238,7 @@ export async function describeConfig(): Promise<DescribedConfig> {
 
   const apiKey = all['llm.apiKey']
   const credentials = all['drive.credentials']
+  const usdaKey = all['usda.apiKey']
 
   return {
     llm: {
@@ -263,6 +282,12 @@ export async function describeConfig(): Promise<DescribedConfig> {
       },
       problem: config.drive.problem,
       configured: config.drive.configured,
+    },
+    usda: {
+      apiKey:
+        usdaKey.value === null
+          ? { set: false, mask: null, source: 'unset' }
+          : { set: true, mask: maskOf(usdaKey.value), source: usdaKey.source },
     },
   }
 }

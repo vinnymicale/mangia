@@ -15,7 +15,7 @@ export async function GET() {
  */
 const PutSchema = z.object({
   // partialRecord, not record: in zod 4 a record keyed by an enum is
-  // exhaustive, and would demand all eight keys on every save -- which is
+  // exhaustive, and would demand every key on every save -- which is
   // exactly backwards for an update whose purpose is to carry only what
   // changed, and would make every save from the page a 400.
   settings: z.partialRecord(z.enum(SETTING_KEYS), z.string().nullable()),

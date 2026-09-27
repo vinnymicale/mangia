@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest'
 import { createTestDatabase } from '@/test/setupDb'
 
 vi.mock('@/lib/llm', () => ({ buildProvider: vi.fn() }))
@@ -15,6 +15,8 @@ beforeAll(() => {
 })
 
 afterAll(() => cleanup())
+
+afterEach(() => vi.unstubAllGlobals())
 
 function post(body: unknown): Request {
   return new Request('http://x/api/settings/test', {
@@ -57,5 +59,26 @@ describe('POST /api/settings/test', () => {
     const response = await (await import('./route')).POST(post({ target: 'drive' }))
     expect(response.status).toBe(200)
     expect((await response.json()).ok).toBe(false)
+  })
+
+  it('searches FoodData Central for the usda target', async () => {
+    const fetchMock = vi.fn(async (_url: URL | string) => Response.json({
+      foods: [{ fdcId: 1, description: 'Onions, raw', dataType: 'SR Legacy' }],
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await (await import('./route')).POST(post({ target: 'usda' }))
+    expect(await response.json()).toEqual({
+      ok: true,
+      detail: 'FoodData Central answered using DEMO_KEY, limited to 30 requests an hour.',
+    })
+    expect(String(fetchMock.mock.calls[0][0])).toContain('api_key=DEMO_KEY')
+  })
+
+  it('reports an unreachable FoodData Central as a failed test', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('ECONNREFUSED') }))
+    const body = await (await (await import('./route')).POST(post({ target: 'usda' }))).json()
+    expect(body.ok).toBe(false)
+    expect(body.detail).toMatch(/unreachable/)
   })
 })

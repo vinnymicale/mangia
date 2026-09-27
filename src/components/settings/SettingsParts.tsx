@@ -169,7 +169,7 @@ export async function saveSettings(
 }
 
 /** Runs a connection test. A failed test is a normal answer, not an error. */
-export async function testConnection(target: 'llm' | 'drive'): Promise<string> {
+export async function testConnection(target: 'llm' | 'drive' | 'usda'): Promise<string> {
   try {
     const response = await fetch('/api/settings/test', {
       method: 'POST',

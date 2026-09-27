@@ -3,8 +3,9 @@ import { z } from 'zod'
 import { resolveConfig } from '@/lib/config'
 import { buildProvider } from '@/lib/llm'
 import { checkAccess } from '@/lib/backup/drive'
+import { DEMO_KEY, searchFoods } from '@/lib/nutrition/usda'
 
-const PostSchema = z.object({ target: z.enum(['llm', 'drive']) })
+const PostSchema = z.object({ target: z.enum(['llm', 'drive', 'usda']) })
 
 /**
  * Tests the live configuration by using it, not by inspecting it. A key that
@@ -18,7 +19,7 @@ const PostSchema = z.object({ target: z.enum(['llm', 'drive']) })
 export async function POST(request: Request) {
   const parsed = PostSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Expected a "target" of "llm" or "drive".' }, { status: 400 })
+    return NextResponse.json({ error: 'Expected a "target" of "llm", "drive" or "usda".' }, { status: 400 })
   }
 
   const config = await resolveConfig()
@@ -30,6 +31,13 @@ export async function POST(request: Request) {
       // to prove the key, the model name, and the endpoint all resolve.
       await provider.parseIngredientLines(['1 cup flour'])
       return NextResponse.json({ ok: true, detail: `${provider.name} answered.` })
+    }
+
+    if (parsed.data.target === 'usda') {
+      // A real search, so a bad key and an unreachable host both show up.
+      await searchFoods('onion', config.usda)
+      const key = config.usda.apiKey ? 'your key' : `${DEMO_KEY}, limited to 30 requests an hour`
+      return NextResponse.json({ ok: true, detail: `FoodData Central answered using ${key}.` })
     }
 
     if (config.drive.key === null) {

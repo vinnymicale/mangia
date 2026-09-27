@@ -2,6 +2,7 @@ import { describeConfig } from '@/lib/config'
 import { lastBackupRun } from '@/lib/backup/scheduler'
 import { AiSettingsPanel } from '@/components/settings/AiSettingsPanel'
 import { BackupSettingsPanel } from '@/components/settings/BackupSettingsPanel'
+import { NutritionSettingsPanel } from '@/components/settings/NutritionSettingsPanel'
 import { PageTitle } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -25,6 +26,7 @@ export default async function SettingsPage() {
 
       <div className="mt-8 space-y-8">
         <AiSettingsPanel initial={config.llm} />
+        <NutritionSettingsPanel initial={config.usda} />
         <BackupSettingsPanel initial={config.drive} initialRun={lastBackupRun()} />
       </div>
     </>
