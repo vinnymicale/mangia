@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import { getRecipe } from '@/lib/db/recipes'
 import { BackLink } from '@/components/ui'
 import { PrintButton } from '@/components/PrintButton'
+import { formatMacroLine } from '@/lib/nutrition/format'
+import { getRecipeNutrition } from '@/lib/nutrition/resolve'
 import { formatMinutes, formatQuantity, toParagraphs, toSteps } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -20,6 +22,8 @@ export default async function PrintRecipePage({
   const { id } = await params
   const recipe = await getRecipe(id)
   if (recipe === null) notFound()
+  const nutrition = await getRecipeNutrition(recipe.id)
+  const macros = nutrition && formatMacroLine(nutrition)
 
   const times = [
     recipe.prepMinutes !== null && `Prep ${formatMinutes(recipe.prepMinutes)}`,
@@ -75,6 +79,9 @@ export default async function PrintRecipePage({
               </li>
             ))}
           </ul>
+          {macros && (
+            <p className="tnum mt-3 text-[12px] text-(--color-ink-2) print:text-[10pt]">{macros}</p>
+          )}
         </section>
 
         <section className="mt-7">

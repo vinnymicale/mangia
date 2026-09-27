@@ -1,4 +1,5 @@
 import { NUTRIENT_KEYS, NUTRIENT_LABELS, type NutrientKey, type Nutrients } from './types'
+import type { RecipeNutrition } from './compute'
 
 /**
  * An estimate is only as good as its weakest guess, so it is shown without
@@ -43,4 +44,24 @@ export function fromDraft(draft: NutrientDraft): Nutrients | null {
     n[key] = value
   }
   return n
+}
+
+const MACRO_LINE_KEYS = ['kcal', 'protein', 'carbs', 'fat'] as const
+
+/**
+ * The one-line summary a printed card carries: "≈ 640 kcal · 38 g protein ·
+ * 52 g carbs · 28 g fat per serving". The "≈" marks an estimate; values the
+ * cook entered are printed as given. Null when there is nothing to print.
+ */
+export function formatMacroLine(nutrition: RecipeNutrition): string | null {
+  if (nutrition.source === 'none') return null
+  const parts = MACRO_LINE_KEYS.flatMap((key) => {
+    const value = nutrition.totals[key]
+    if (value === null) return []
+    const amount = formatNutrient(key, value)
+    return [key === 'kcal' ? amount : `${amount} ${NUTRIENT_LABELS[key].label.toLowerCase()}`]
+  })
+  if (parts.length === 0) return null
+  const basis = nutrition.basis === 'serving' ? 'per serving' : 'for the whole recipe'
+  return `${nutrition.source === 'estimate' ? '≈ ' : ''}${parts.join(' · ')} ${basis}`
 }
