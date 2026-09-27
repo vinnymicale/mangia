@@ -7,6 +7,10 @@ import { hasRecipePhoto } from '@/lib/db/photos'
 import { BackLink, button, card } from '@/components/ui'
 import { DeleteButton } from '@/components/DeleteButton'
 import { CookHistory } from '@/components/CookHistory'
+import { NutritionPanel } from '@/components/nutrition/NutritionPanel'
+import { resolveConfig } from '@/lib/config'
+import { formatNutrientValue } from '@/lib/nutrition/format'
+import { getRecipeNutrition } from '@/lib/nutrition/resolve'
 import {
   cn,
   formatMinutes,
@@ -45,6 +49,10 @@ export default async function RecipePage({
   // Only whether one exists: the bytes are served by their own route, so the
   // page never carries a photo through the HTML.
   const photo = await hasRecipePhoto(recipe.id)
+  // From stored data only; anything never looked up is fetched by the panel
+  // after the page has rendered, so a slow USDA never holds up the recipe.
+  const nutrition = (await getRecipeNutrition(recipe.id))!
+  const aiConfigured = Boolean((await resolveConfig()).llm.apiKey)
 
   return (
     <article>
@@ -122,13 +130,20 @@ export default async function RecipePage({
             <Stat term="Prep">{formatMinutes(recipe.prepMinutes)}</Stat>
             <Stat term="Cook">{formatMinutes(recipe.cookMinutes)}</Stat>
             <Stat term="Serves">{recipe.servings ?? '—'}</Stat>
+            {nutrition.totals.kcal !== null && (
+              <Stat term={nutrition.basis === 'serving' ? 'Calories' : 'Calories, whole recipe'}>
+                ≈ {formatNutrientValue('kcal', nutrition.totals.kcal)}
+                <span className="ml-1 font-sans text-sm font-semibold text-(--color-ink-2)">kcal</span>
+              </Stat>
+            )}
           </dl>
         </div>
       </header>
 
       <div className="mt-10 gap-13 lg:grid lg:grid-cols-[16.875rem_1fr]">
-        {/* The list stays in view while the method scrolls past it. */}
-        <section className="h-fit lg:sticky lg:top-[calc(var(--nav-h)+1.5rem)]">
+        {/* The list stays in view while the method scrolls past it. Capped at
+            the viewport so an open nutrition panel below it stays reachable. */}
+        <section className="h-fit lg:sticky lg:top-[calc(var(--nav-h)+1.5rem)] lg:max-h-[calc(100vh-var(--nav-h)-3rem)] lg:overflow-y-auto">
           <h2 className="eyebrow">Ingredients</h2>
           {/* Quantity and name are columns, not a sentence: the aligned
               measures let a cook check off the mise en place down one edge. */}
@@ -154,6 +169,7 @@ export default async function RecipePage({
               </li>
             ))}
           </ul>
+          <NutritionPanel recipeId={recipe.id} initial={nutrition} aiConfigured={aiConfigured} />
         </section>
 
         <section className="mt-10 lg:mt-0">
