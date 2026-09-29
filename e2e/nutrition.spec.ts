@@ -26,7 +26,13 @@ async function seedRecipe(
 }
 
 function nutritionPanel(page: Page) {
-  return page.getByRole('region', { name: 'Nutrition' })
+  return page.getByRole('dialog', { name: 'Nutrition' })
+}
+
+/** The panel lives in a dialog opened from the recipe's action row. */
+async function openNutrition(page: Page) {
+  await page.getByRole('button', { name: 'Nutrition', exact: true }).click()
+  await expect(nutritionPanel(page)).toBeVisible()
 }
 
 /** The per-serving figure beside a label in the panel's summary. */
@@ -39,6 +45,7 @@ test('says so when FoodData Central cannot be reached', async ({ page, request }
   const id = await seedRecipe(request, `Brodo ${suffix}`, `offline stock ${suffix}`, 500)
 
   await page.goto(`/recipes/${id}`)
+  await openNutrition(page)
 
   await expect(nutritionPanel(page).getByText('FoodData Central could not be reached')).toBeVisible()
   // Not marked unmatched: the next visit should try the lookup again.
@@ -51,6 +58,7 @@ test('fills a missing ingredient by hand and updates the totals', async ({ page,
   const id = await seedRecipe(request, `Polenta ${suffix}`, `cornmeal ${suffix}`, 200)
 
   await page.goto(`/recipes/${id}`)
+  await openNutrition(page)
   const panel = nutritionPanel(page)
   await panel.getByRole('button', { name: '1 ingredient needs input' }).click()
 
@@ -80,6 +88,7 @@ test('an edit on the ingredients page reaches every recipe using it', async ({ p
   await expect(page.getByText('Saved.')).toBeVisible()
 
   await page.goto(`/recipes/${id}`)
+  await openNutrition(page)
   // 100 g over 2 servings.
   await expect(figure(page, 'Calories')).toHaveText('170 kcal')
   await expect(figure(page, 'Fat')).toHaveText('1.3 g')
@@ -90,6 +99,7 @@ test('sets and clears a hand-entered override', async ({ page, request }) => {
   const id = await seedRecipe(request, `Ribollita ${suffix}`, `cavolo nero ${suffix}`, 300)
 
   await page.goto(`/recipes/${id}`)
+  await openNutrition(page)
   const panel = nutritionPanel(page)
   // Let the automatic lookup settle so it cannot land after the override.
   await expect(panel.getByRole('button', { name: '1 ingredient needs input' })).toBeVisible()
@@ -105,10 +115,26 @@ test('sets and clears a hand-entered override', async ({ page, request }) => {
 
   // It survives a reload: the override is stored, not just shown.
   await page.reload()
+  await openNutrition(page)
   await expect(figure(page, 'Calories')).toHaveText('640 kcal')
 
   await panel.getByRole('button', { name: 'Override' }).click()
   await panel.getByRole('button', { name: 'Clear override' }).click()
   await expect(panel.getByText('From the back of the book')).toHaveCount(0)
   await expect(panel.getByText('No estimate yet.')).toBeVisible()
+})
+
+test('opens from the action row and closes again', async ({ page, request }) => {
+  const suffix = `${Date.now()}`
+  const id = await seedRecipe(request, `Minestra ${suffix}`, `orzo ${suffix}`, 150)
+
+  await page.goto(`/recipes/${id}`)
+  await expect(nutritionPanel(page)).toBeHidden()
+  await openNutrition(page)
+  await nutritionPanel(page).getByRole('button', { name: 'Close' }).click()
+  await expect(nutritionPanel(page)).toBeHidden()
+
+  await openNutrition(page)
+  await page.keyboard.press('Escape')
+  await expect(nutritionPanel(page)).toBeHidden()
 })

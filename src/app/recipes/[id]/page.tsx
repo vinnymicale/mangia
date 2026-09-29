@@ -7,7 +7,7 @@ import { hasRecipePhoto } from '@/lib/db/photos'
 import { BackLink, button, card } from '@/components/ui'
 import { DeleteButton } from '@/components/DeleteButton'
 import { CookHistory } from '@/components/CookHistory'
-import { NutritionPanel } from '@/components/nutrition/NutritionPanel'
+import { NutritionDialog } from '@/components/nutrition/NutritionDialog'
 import { resolveConfig } from '@/lib/config'
 import { formatNutrientValue } from '@/lib/nutrition/format'
 import { getRecipeNutrition } from '@/lib/nutrition/resolve'
@@ -53,6 +53,15 @@ export default async function RecipePage({
   // after the page has rendered, so a slow USDA never holds up the recipe.
   const nutrition = (await getRecipeNutrition(recipe.id))!
   const aiConfigured = Boolean((await resolveConfig()).llm.apiKey)
+
+  const quantities = recipe.ingredients.map((row) =>
+    [formatQuantity(row.quantity), row.unit].filter(Boolean).join(' '),
+  )
+  // The quantity column is as wide as the longest measure, so "2 tablespoon"
+  // stays on one line and the names still start at one edge. The rows are
+  // separate grids (they flow through CSS columns), so the width is shared
+  // through a custom property rather than a common grid track.
+  const quantityWidth = Math.max(0, ...quantities.map((quantity) => quantity.length))
 
   return (
     <article>
@@ -107,6 +116,11 @@ export default async function RecipePage({
                 <Printer className="size-4" aria-hidden />
                 Print
               </Link>
+              <NutritionDialog
+                recipeId={recipe.id}
+                initial={nutrition}
+                aiConfigured={aiConfigured}
+              />
               {safeExternalUrl(recipe.sourceUrl) && (
                 <a
                   href={safeExternalUrl(recipe.sourceUrl)!}
@@ -140,100 +154,102 @@ export default async function RecipePage({
         </div>
       </header>
 
-      <div className="mt-10 gap-13 lg:grid lg:grid-cols-[16.875rem_1fr]">
-        {/* The list stays in view while the method scrolls past it. Capped at
-            the viewport so an open nutrition panel below it stays reachable. */}
-        <section className="h-fit lg:sticky lg:top-[calc(var(--nav-h)+1.5rem)] lg:max-h-[calc(100vh-var(--nav-h)-3rem)] lg:overflow-y-auto">
-          <h2 className="eyebrow">Ingredients</h2>
-          {/* Quantity and name are columns, not a sentence: the aligned
-              measures let a cook check off the mise en place down one edge. */}
-          <ul className="mt-3">
-            {recipe.ingredients.map((row) => (
-              <li
-                key={row.id}
-                className="grid grid-cols-[4.875rem_1fr] gap-3 border-b border-(--color-border) py-2.5 first:border-t first:border-(--color-border)"
+      {/* The whole list comes before the method, so everything can be
+          gathered before the first step is read. It runs in two columns on
+          wider screens, reading down then across in the recipe's own order,
+          so a long list still fits on the screen at once. */}
+      <section aria-labelledby="ingredients-heading" className="mt-10">
+        <h2 id="ingredients-heading" className="eyebrow">
+          Ingredients
+        </h2>
+        {/* Quantity and name are columns, not a sentence: the aligned
+            measures let a cook check off the mise en place down one edge. */}
+        <ul
+          style={{ '--quantity-width': `${quantityWidth}ch` } as React.CSSProperties}
+          className="mt-3 border-t border-(--color-border) sm:columns-2 sm:gap-x-12"
+        >
+          {recipe.ingredients.map((row, index) => (
+            <li
+              key={row.id}
+              className="grid break-inside-avoid grid-cols-[max(4.875rem,var(--quantity-width))_1fr] gap-3 border-b border-(--color-border) py-2.5"
+            >
+              <span className="tnum text-right text-[13.5px] font-semibold whitespace-nowrap text-(--color-accent)">
+                {quantities[index]}
+              </span>
+              <span className="text-sm">
+                {row.ingredient.name}
+                {row.note && (
+                  <span className="block text-xs text-(--color-ink-2) italic">
+                    {row.note}
+                  </span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="eyebrow">Instructions</h2>
+        {/* Numbered because the steps genuinely are a sequence -- and a
+            cook glancing back mid-recipe needs to find their place again. */}
+        <ol className="mt-5 max-w-prose space-y-7">
+          {toSteps(recipe.instructions).map((step, index) => (
+            <li key={index} className="grid grid-cols-[2.375rem_1fr] gap-4.5">
+              <span
+                aria-hidden
+                className="tnum flex size-[38px] items-center justify-center rounded-full border-[1.5px] border-(--color-border-hi) text-[13px] font-bold text-(--color-ink-2)"
               >
-                <span className="tnum text-right text-[13.5px] font-semibold text-(--color-accent)">
-                  {[formatQuantity(row.quantity), row.unit]
-                    .filter(Boolean)
-                    .join(' ')}
-                </span>
-                <span className="text-sm">
-                  {row.ingredient.name}
-                  {row.note && (
-                    <span className="block text-xs text-(--color-ink-2) italic">
-                      {row.note}
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <NutritionPanel recipeId={recipe.id} initial={nutrition} aiConfigured={aiConfigured} />
-        </section>
+                {index + 1}
+              </span>
+              <span className="text-base leading-[1.72]">{step}</span>
+            </li>
+          ))}
+        </ol>
 
-        <section className="mt-10 lg:mt-0">
-          <h2 className="eyebrow">Instructions</h2>
-          {/* Numbered because the steps genuinely are a sequence -- and a
-              cook glancing back mid-recipe needs to find their place again. */}
-          <ol className="mt-5 max-w-prose space-y-7">
-            {toSteps(recipe.instructions).map((step, index) => (
-              <li key={index} className="grid grid-cols-[2.375rem_1fr] gap-4.5">
-                <span
-                  aria-hidden
-                  className="tnum flex size-[38px] items-center justify-center rounded-full border-[1.5px] border-(--color-border-hi) text-[13px] font-bold text-(--color-ink-2)"
-                >
-                  {index + 1}
-                </span>
-                <span className="text-base leading-[1.72]">{step}</span>
-              </li>
-            ))}
-          </ol>
-
-          {/* The cook's own record, kept below the method: it is read after
-              the recipe is already familiar, and it is what carries over from
-              the last time this was made. Blank lines start new paragraphs so
-              notes accumulated across several cooks stay legible. */}
-          {recipe.notes && (
-            <div className="mt-12 border-t border-(--color-border) pt-8">
-              <h2 className="eyebrow">Notes</h2>
-              <div className="mt-4 max-w-prose space-y-3.5">
-                {toParagraphs(recipe.notes).map((note, index) => (
-                  <p key={index} className="text-base leading-[1.72] text-(--color-ink-2)">
-                    {note}
-                  </p>
-                ))}
-              </div>
+        {/* The cook's own record, kept below the method: it is read after
+            the recipe is already familiar, and it is what carries over from
+            the last time this was made. Blank lines start new paragraphs so
+            notes accumulated across several cooks stay legible. */}
+        {recipe.notes && (
+          <div className="mt-12 border-t border-(--color-border) pt-8">
+            <h2 className="eyebrow">Notes</h2>
+            <div className="mt-4 max-w-prose space-y-3.5">
+              {toParagraphs(recipe.notes).map((note, index) => (
+                <p key={index} className="text-base leading-[1.72] text-(--color-ink-2)">
+                  {note}
+                </p>
+              ))}
             </div>
-          )}
-          {/* The card this was read from, for the handwriting, the splashes,
-              and whatever the parse could not make out. Collapsed because the
-              typed recipe above is the one being cooked from, and hidden in
-              print for the same reason. */}
-          {photo && (
-            <details className="mt-12 border-t border-(--color-border) pt-8 print:hidden">
-              <summary className="eyebrow cursor-pointer">Original photo</summary>
-              {/* eslint-disable-next-line @next/next/no-img-element -- served
-                  from a route that streams bytes out of the database. */}
-              <img
-                src={`/api/recipes/${recipe.id}/photo`}
-                alt={`The photo ${recipe.title} was read from`}
-                className="mt-4 max-h-[36rem] rounded-lg border border-(--color-border)"
-              />
-            </details>
-          )}
-          {/* Below the method and the notes: history is what the cook consults
-              after deciding to make this again, not while reading it. */}
-          <CookHistory
-            recipeId={recipe.id}
-            initialEntries={cookLog.map((entry) => ({
-              id: entry.id,
-              cookedAt: entry.cookedAt.toISOString(),
-              note: entry.note,
-            }))}
-          />
-        </section>
-      </div>
+          </div>
+        )}
+        {/* The card this was read from, for the handwriting, the splashes,
+            and whatever the parse could not make out. Collapsed because the
+            typed recipe above is the one being cooked from, and hidden in
+            print for the same reason. */}
+        {photo && (
+          <details className="mt-12 border-t border-(--color-border) pt-8 print:hidden">
+            <summary className="eyebrow cursor-pointer">Original photo</summary>
+            {/* eslint-disable-next-line @next/next/no-img-element -- served
+                from a route that streams bytes out of the database. */}
+            <img
+              src={`/api/recipes/${recipe.id}/photo`}
+              alt={`The photo ${recipe.title} was read from`}
+              className="mt-4 max-h-[36rem] rounded-lg border border-(--color-border)"
+            />
+          </details>
+        )}
+        {/* Below the method and the notes: history is what the cook consults
+            after deciding to make this again, not while reading it. */}
+        <CookHistory
+          recipeId={recipe.id}
+          initialEntries={cookLog.map((entry) => ({
+            id: entry.id,
+            cookedAt: entry.cookedAt.toISOString(),
+            note: entry.note,
+          }))}
+        />
+      </section>
     </article>
   )
 }

@@ -117,8 +117,8 @@ export function NutritionPanel({
   const basisLabel = nutrition.basis === 'serving' ? 'Per serving' : 'Whole recipe'
 
   return (
-    <section aria-labelledby={`nutrition-${recipeId}`} className="mt-8">
-      <h2 id={`nutrition-${recipeId}`} className="eyebrow">
+    <section aria-labelledby={`nutrition-${recipeId}`}>
+      <h2 id={`nutrition-${recipeId}`} className="pr-10 text-2xl font-bold tracking-[-0.02em]">
         Nutrition
       </h2>
 

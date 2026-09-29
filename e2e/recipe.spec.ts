@@ -26,8 +26,9 @@ test('shows a recipe detail page', async ({ page, request }) => {
   const id = await createRecipe(request)
   await page.goto(`/recipes/${id}`)
   await expect(page.getByRole('heading', { name: 'Cacio e Pepe' })).toBeVisible()
-  // The nutrition breakdown lists the ingredient again; this is the ingredient list.
-  await expect(page.getByText('spaghetti').first()).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Ingredients' }).getByText('spaghetti'),
+  ).toBeVisible()
   await expect(page.getByText('weeknight')).toBeVisible()
 })
 
