@@ -19,9 +19,15 @@ have.
 
 ![The recipe library](docs/screenshots/browse.png)
 
-**A recipe** — ingredients, method, and tags.
+**A recipe** — the whole ingredient list gathered above the method, with the
+times and an estimated calorie count beside the title.
 
 ![A single recipe](docs/screenshots/recipe.png)
+
+**Nutrition** — per-serving macros estimated from USDA data, opened from the
+recipe's action row, with a line-by-line breakdown of what was counted.
+
+![The nutrition dialog for a recipe](docs/screenshots/nutrition.png)
 
 **Cooking from what you have** — type in your ingredients and see what is
 within reach, with the gaps called out.
@@ -39,7 +45,8 @@ To regenerate these after a UI change:
 npm run screenshots
 ```
 
-That rebuilds `e2e.db`, seeds the mock recipes, and overwrites
+That rebuilds `e2e.db`, seeds the mock recipes and their ingredient
+nutrition, and overwrites
 `docs/screenshots/`. It needs the Playwright browser (see [Tests](#tests)).
 
 ## Run it
@@ -83,13 +90,14 @@ restart.
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
-| `LLM_PROVIDER` | no | `gemini` | `gemini` or `openai-compatible` (Ollama, LM Studio, vLLM…). Only needed for URL import, the AI clean-up button, and higher-quality photo reading. |
+| `LLM_PROVIDER` | no | `gemini` | `gemini` or `openai-compatible` (Ollama, LM Studio, vLLM…). Only needed for URL and video import, the AI clean-up button, higher-quality photo reading, and help matching foods for nutrition. Video import needs `gemini`. |
 | `LLM_API_KEY` | no | — | API key for the chosen provider. Leave blank for an `openai-compatible` endpoint that doesn't require one. |
 | `LLM_MODEL` | no | `gemini-2.5-flash` | Defaults to `gemini-2.5-flash` for gemini, `gpt-4o-mini` for openai-compatible. |
 | `LLM_BASE_URL` | no | — | Only for `openai-compatible`, e.g. `http://192.168.1.10:11434/v1` for Ollama. |
 | `GOOGLE_DRIVE_CREDENTIALS` | no | — | Service account key JSON, or a path to it, for Google Drive backups. Easier to set from **/settings**, which lets you pick the file instead of pasting JSON. |
 | `GOOGLE_DRIVE_FOLDER_ID` | no | — | The Drive folder to upload backups into. Share it with the service account's address. |
 | `GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS` | no | `24` | Hours between Google Drive backups. |
+| `USDA_API_KEY` | no | `DEMO_KEY` | FoodData Central key for nutrition estimates, free from [api.data.gov](https://api.data.gov/signup/). Without one the shared `DEMO_KEY` is used, limited to 30 lookups an hour. |
 
 ## Develop
 
@@ -151,7 +159,8 @@ Four doors, all on **Add**:
 1. **Paste a block of ingredients.** Parsed locally with no model call.
    Anything the parser is unsure of is flagged amber; one button sends only
    those lines to the LLM.
-2. **Paste a URL.** JSON-LD is tried first; the model is a fallback.
+2. **Paste a URL.** JSON-LD is tried first; the model is a fallback. YouTube,
+   Instagram and TikTok links are read as videos instead — see below.
 3. **Photograph a card.** See below.
 4. **Type it out.** The same review table, starting empty.
 
@@ -181,6 +190,80 @@ shown on the recipe page, and included in exports and backups.
 The first photo read in a fresh container downloads its language data
 (~5 MB), so it is slower than the ones after it.
 
+### From a video
+
+A YouTube, Instagram or TikTok link goes down a short ladder. The caption is
+tried first: if it is long enough and names amounts, it is parsed like any
+pasted recipe and the video is never touched. Otherwise the video itself goes
+to the model — YouTube by URL, Instagram and TikTok downloaded with `yt-dlp`
+and sent as bytes. The form says which rung produced the draft.
+
+Reading the video needs Gemini; the `openai-compatible` provider only gets the
+caption rung. The Docker image ships `yt-dlp` but not `ffmpeg`, so the download
+asks for a single progressive MP4. Any other link is treated as an article.
+
+## Nutrition
+
+Every recipe gets an estimate of calories, protein, carbs, fat, fiber, sugar
+and sodium, per serving when the servings are known and for the whole recipe
+otherwise. The calories show beside the title; the rest is behind the
+**Nutrition** button in the recipe's action row, along with a breakdown of what
+each ingredient contributed.
+
+The figures come from [USDA FoodData Central](https://fdc.nal.usda.gov/)
+(Foundation and SR Legacy foods). Values per 100 g and the weight of units like
+"1 cup" or "2 cloves" are stored per ingredient, not per recipe, so one lookup
+serves every recipe that uses it. Lookups start on their own the first time a
+recipe is opened, and never hold up the page.
+
+When a food can't be matched or a unit has no known weight, the dialog lists it
+as needing input: enter the values by hand, retry the lookup, or leave it out.
+With an LLM configured it can pick the right FoodData Central match, estimate a
+unit's weight, and suggest values for things USDA doesn't carry. Without one,
+only a confident top search result is trusted and the rest is left to you.
+
+- **Override** a recipe's figures outright — from the back of a book, say —
+  with a note on where they came from.
+- **/ingredients** lists every ingredient's stored values and unit weights, and
+  an edit there reaches every recipe using it.
+- The **print** card carries a one-line macro summary.
+- Exports and backups carry the nutrition, and importing one fills gaps without
+  overwriting values you already have.
+
+A FoodData Central key is optional. Without one the shared `DEMO_KEY` is used,
+which allows 30 lookups an hour — enough to get going, and lookups run one at a
+time to stay under it. A free key from [api.data.gov](https://api.data.gov/signup/)
+lifts the limit.
+
+## Around the app
+
+- **Recipes** — the library: sort by recency or total time, filter by tag or
+  by how many minutes you have. **Search** covers titles, descriptions,
+  ingredients, method and notes.
+- **A recipe** — a cook view that splits the method into checkable steps, a
+  print card, editing, a log of when it was cooked with notes, and the
+  original photo if one was kept.
+- **Pantry** — "what can I make?" Enter what you have; recipes are ranked on
+  how little is missing.
+- **Leftovers** — the other way round: "what uses this?" Name the half tub of
+  ricotta and see recipes ranked on how little else they need.
+- **Lists** — shopping lists merged across recipes, each line tracing back to
+  the recipes that wanted it. Staples you always have are skipped by
+  default.
+- **Diary** — every cook across all recipes: what was made lately, what gets
+  made most, and what has been quietly forgotten.
+- **Staples** — what you always have on hand, plus a tag editor for renaming
+  and merging tags.
+- **Ingredients** — the nutrition values described above.
+- **Settings** — the LLM, the FoodData Central key, and backups.
+
+### Backups
+
+**/settings** can download every recipe as one
+`mangia-backup-YYYY-MM-DD.json` file and import one back; imported recipes are
+added alongside what is already there. It can also upload a backup to Google
+Drive on an interval, using a service account and a folder shared with it.
+
 ## Settings
 
 Everything configurable lives at **/settings**, and nothing there needs a
@@ -195,10 +278,13 @@ Each setting can also come from the environment. A value saved in the UI wins;
 | --- | --- |
 | Provider, API key, model, base URL | `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL` |
 | Service account key, folder id, interval | `GOOGLE_DRIVE_CREDENTIALS`, `GOOGLE_DRIVE_FOLDER_ID`, `GOOGLE_DRIVE_BACKUP_INTERVAL_HOURS` |
+| USDA API key | `USDA_API_KEY` |
 
 ### LLM providers
 
 Choose Gemini with an API key, or an OpenAI-compatible endpoint pointed at
 Ollama or LM Studio via its base URL. The app works without either — you lose
-URL import and the AI clean-up button, and photo import falls back to
-on-device text recognition. Nothing else.
+URL import, video import and the AI clean-up button, photo import falls back
+to on-device text recognition, and nutrition lookups trust only confident
+matches, leaving the rest for you to fill in. Nothing else. Reading a video
+needs Gemini; an OpenAI-compatible endpoint can't.

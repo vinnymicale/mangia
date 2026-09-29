@@ -124,21 +124,62 @@ async function seed(request: APIRequestContext): Promise<string[]> {
   return ids
 }
 
+// The e2e FoodData Central stub knows no foods, so the stir fry's ingredients
+// get USDA-like values per 100 g here, and a weight for each unit that is not
+// already one. That gives the nutrition shot a complete estimate.
+const STIR_FRY_NUTRITION: Record<string, { per100g: number[]; weight?: [string | null, number] }> = {
+  //                     kcal protein carbs fat fiber sugar sodium
+  'chicken thighs':    { per100g: [121, 19.7, 0, 4.1, 0, 0, 95] },
+  cornstarch:          { per100g: [381, 0.3, 91, 0.1, 0.9, 0, 9], weight: ['tablespoon', 8] },
+  garlic:              { per100g: [149, 6.4, 33, 0.5, 2.1, 1, 17], weight: ['clove', 3] },
+  'fresh ginger':      { per100g: [80, 1.8, 18, 0.8, 2, 1.7, 13], weight: ['tablespoon', 6] },
+  'broccoli florets':  { per100g: [34, 2.8, 6.6, 0.4, 2.6, 1.7, 33], weight: ['cup', 91] },
+  carrot:              { per100g: [41, 0.9, 9.6, 0.2, 2.8, 4.7, 69], weight: [null, 61] },
+  'soy sauce':         { per100g: [53, 8.1, 4.9, 0.6, 0.8, 0.4, 5493], weight: ['tablespoon', 16] },
+  'toasted sesame oil': { per100g: [884, 0, 0, 100, 0, 0, 0], weight: ['tablespoon', 13.6] },
+}
+
+async function seedNutrition(request: APIRequestContext) {
+  const res = await request.get('/api/ingredients')
+  const { ingredients } = (await res.json()) as { ingredients: { id: string; name: string }[] }
+  for (const [name, { per100g, weight }] of Object.entries(STIR_FRY_NUTRITION)) {
+    const id = ingredients.find((row) => row.name === name)!.id
+    const [kcal, protein, carbs, fat, fiber, sugar, sodium] = per100g
+    await request.put(`/api/ingredients/${id}/nutrition`, {
+      data: { nutrients: { kcal, protein, carbs, fat, fiber, sugar, sodium } },
+    })
+    if (weight) {
+      await request.put(`/api/ingredients/${id}/weights`, {
+        data: { unit: weight[0], grams: weight[1] },
+      })
+    }
+  }
+}
+
 test.use({ viewport: VIEWPORT })
 
 test('captures the README screenshots', async ({ page, request }) => {
   mkdirSync(OUT, { recursive: true })
   const ids = await seed(request)
+  await seedNutrition(request)
 
   // Browse: the whole library, most recent first.
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Tomato Basil Soup' })).toBeVisible()
   await page.screenshot({ path: `${OUT}/browse.png`, caret: 'initial' })
 
-  // A single recipe, ingredients and method side by side.
+  // A single recipe, the ingredients above the method.
   await page.goto(`/recipes/${ids[1]}`)
   await expect(page.getByRole('heading', { name: 'Garlic Ginger Chicken Stir Fry' })).toBeVisible()
+  await expect(page.getByRole('term').filter({ hasText: 'Calories' })).toBeVisible()
   await page.screenshot({ path: `${OUT}/recipe.png`, caret: 'initial' })
+
+  // The same recipe's nutrition, opened from the action row.
+  await page.getByRole('button', { name: 'Nutrition', exact: true }).click()
+  const nutrition = page.getByRole('dialog', { name: 'Nutrition' })
+  await expect(nutrition.getByText('Estimate covers 8 of 8 ingredients')).toBeVisible()
+  await nutrition.getByText('Breakdown').click()
+  await page.screenshot({ path: `${OUT}/nutrition.png`, caret: 'initial' })
 
   // The paste-a-blob entry path, mid-review, with the parsed rows showing.
   await page.goto('/recipes/new')
