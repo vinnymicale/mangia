@@ -38,6 +38,10 @@ function byCategory(rows: ShoppingItemView[]): [string, ShoppingItemView[]][] {
   )
 }
 
+function quantityOf(row: ShoppingItemView): string {
+  return [formatQuantity(row.quantity), row.unit].filter(Boolean).join(' ')
+}
+
 export function ShoppingListView({
   listId,
   items,
@@ -52,6 +56,8 @@ export function ShoppingListView({
 
   const checked = rows.filter((row) => row.checked).length
   const done = rows.length > 0 && checked === rows.length
+  // One width for every category, so the amounts line up down the whole list.
+  const quantityWidth = Math.max(0, ...rows.map((row) => quantityOf(row).length))
 
   /**
    * Removes the checked rows for good. Unlike toggle() this is not optimistic:
@@ -159,7 +165,9 @@ export function ShoppingListView({
           Nothing left on this list. Add an item below to keep going.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-[12px] border border-(--color-border) bg-(--color-surface) shadow-(--shadow-card)">
+        <div
+          style={{ '--quantity-width': `${quantityWidth}ch` } as React.CSSProperties}
+          className="overflow-hidden rounded-[12px] border border-(--color-border) bg-(--color-surface) shadow-(--shadow-card)">
           {byCategory(rows).map(([category, group], groupIndex) => (
             <section
               key={category}
@@ -184,12 +192,11 @@ export function ShoppingListView({
                             void toggle(row.id, event.target.checked)
                           }
                         />
-                        {/* The measure gets a fixed column so a list of amounts
-                            lines up down one edge while shopping. */}
-                        <span className="tnum w-18 shrink-0 text-right text-[13px] font-semibold text-(--color-accent)">
-                          {[formatQuantity(row.quantity), row.unit]
-                            .filter(Boolean)
-                            .join(' ')}
+                        {/* The measure gets a column as wide as the longest
+                            one on the list, so amounts line up down one edge
+                            while shopping and none breaks across lines. */}
+                        <span className="tnum w-[max(4.5rem,var(--quantity-width))] shrink-0 text-right text-[13px] font-semibold whitespace-nowrap text-(--color-accent)">
+                          {quantityOf(row)}
                         </span>
                         <span
                           className={cn(
@@ -202,7 +209,7 @@ export function ShoppingListView({
                         {/* Why this is on the list -- secondary to the item, so
                             it sits out on the right rather than inline. */}
                         {source !== '' && (
-                          <span className="ml-auto shrink-0 text-[11px] text-(--color-ink-2)">
+                          <span className="ml-auto max-w-[40%] shrink text-right text-[11px] text-(--color-ink-2)">
                             {source}
                           </span>
                         )}

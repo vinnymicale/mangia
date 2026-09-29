@@ -201,7 +201,7 @@ export function CookingView({
                     className="mt-2 size-6 shrink-0"
                   />
                   <span className={cn('transition-colors', checked && 'text-(--color-ink-2) line-through')}>
-                    <span className="tnum font-medium text-(--color-accent)">
+                    <span className="tnum font-medium whitespace-nowrap text-(--color-accent)">
                       {[formatQuantity(row.quantity), row.unit].filter(Boolean).join(' ')}
                     </span>{' '}
                     {row.name}

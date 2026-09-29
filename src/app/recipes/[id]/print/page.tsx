@@ -71,7 +71,7 @@ export default async function PrintRecipePage({
                 key={row.id}
                 className="mb-1.5 break-inside-avoid leading-[1.5]"
               >
-                <span className="tnum font-semibold">
+                <span className="tnum font-semibold whitespace-nowrap">
                   {[formatQuantity(row.quantity), row.unit].filter(Boolean).join(' ')}
                 </span>{' '}
                 {row.ingredient.name}
